@@ -1,31 +1,34 @@
+/*
+* 회원가입 제목
+* 닉네임/이메일/비밀번호 input
+* 회원가입 버튼
+* 로그인 페이지 링크
+*/
+
 import {useState} from "react";
 import {signup} from "../api.ts";
+import {Link, useNavigate} from "react-router-dom";
 
-type SignUpFormProps = {
-    isSignup:boolean, setIsSignup:React.Dispatch<React.SetStateAction<boolean>>, setIsSignupOpen:React.Dispatch<React.SetStateAction<boolean>>
-}
+function SignupPage() {
+    const navigate = useNavigate();
 
-function SignupForm({isSignup, setIsSignup, setIsSignupOpen}:SignUpFormProps) {
     const [nickName, setNickName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         try {
             await signup(nickName, email, password);
-            setIsSignup(true);
             alert('회원가입 성공');
-            setNickName('');
-            setEmail('');
-            setPassword('');
-            setIsSignupOpen(false);
+            navigate('/login');
         } catch{
             alert('회원가입 실패');
         }
     }
 
-    return(
+    return (
         <>
             <h1>회원가입</h1>
             <form onSubmit={handleSubmit}>
@@ -46,8 +49,9 @@ function SignupForm({isSignup, setIsSignup, setIsSignupOpen}:SignUpFormProps) {
 
                 <button type="submit">회원가입</button>
             </form>
+            <Link to="/login">로그인</Link>
         </>
     );
 }
 
-export default SignupForm;
+export default SignupPage;

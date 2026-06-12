@@ -1,24 +1,24 @@
 import './App.css'
-import {useState} from 'react'
-import LoginForm from "./component/LoginForm.tsx";
-import SignupForm from "./component/SignupForm.tsx";
+import {BrowserRouter, Route, Routes, Navigate} from "react-router-dom";
+import HomePage from "./pages/HomePage.tsx";
+import LoginPage from "./pages/LoginPage.tsx";
+import SignupPage from "./pages/SignupPage.tsx";
+import BoardPage from "./pages/BoardPage.tsx";
+import BoardDetailPage from "./pages/BoardDetailPage.tsx";
+
 
 function App() {
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isSignupOpen, setIsSignupOpen] = useState(false);
-    const [isSignup, setIsSignup] = useState(false);
-
     return (
-        <>
-            <LoginForm isLoggedIn={isLoggedIn} setIsLoggedIn={setIsLoggedIn}/>
-            <div style={{display: 'flex', justifyContent: 'center', margin: '10px'}}>
-                {!isLoggedIn && <button onClick={() => setIsSignupOpen(prevState => !prevState)} style={{
-                    maxWidth: '180px',
-                    verticalAlign: "center"
-                }}>{isSignupOpen ? "회원가입 닫기" : "회원가입 열기"}</button>}
-            </div>
-            {isSignupOpen && !isLoggedIn && <SignupForm isSignup={isSignup} setIsSignup={setIsSignup} setIsSignupOpen={setIsSignupOpen}/>}
-        </>
+        <BrowserRouter>
+            <Routes>
+                <Route path="/" element={<Navigate to="/login" replace />}/>
+                <Route path="/login" element={<LoginPage/>}/>
+                <Route path="/signup" element={<SignupPage/>}/>
+                <Route path="/home" element={<HomePage/>}/>
+                <Route path="/board" element={<BoardPage/>}/>
+                <Route path="/board/:id" element={<BoardDetailPage/>}/>
+            </Routes>
+        </BrowserRouter>
     );
 }
 
