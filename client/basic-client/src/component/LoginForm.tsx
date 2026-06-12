@@ -1,4 +1,5 @@
 import {useState} from "react";
+import {login} from "../api.ts";
 
 // React 컴포넌트는 JSX에서 넘긴 값들을 하나의 props 객체로 받음
 type LoginFormProps = {
@@ -9,9 +10,14 @@ function LoginForm({isLoggedIn, setIsLoggedIn}: LoginFormProps) {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        // todo: login api 연동
+        try {
+            await login(email, password);
+            setIsLoggedIn(true);
+        } catch{
+            alert('로그인 실패');
+        }
     }
 
     function handleLogout(){
@@ -25,7 +31,9 @@ function LoginForm({isLoggedIn, setIsLoggedIn}: LoginFormProps) {
             <h1>로그인</h1>
             {
                 isLoggedIn ?
-                    <button type="submit" onClick={handleLogout}>로그아웃</button>
+                    <div style={{display: 'flex', justifyContent: 'center', margin: '10px'}}>
+                        <button type="submit" onClick={handleLogout}>로그아웃</button>
+                    </div>
 
                     : <form onSubmit={handleSubmit}>
                         <input type = 'email'

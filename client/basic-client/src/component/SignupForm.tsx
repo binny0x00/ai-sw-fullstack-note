@@ -1,13 +1,28 @@
 import {useState} from "react";
+import {signup} from "../api.ts";
 
-function SignupForm() {
+type SignUpFormProps = {
+    isSignup:boolean, setIsSignup:React.Dispatch<React.SetStateAction<boolean>>, setIsSignupOpen:React.Dispatch<React.SetStateAction<boolean>>
+}
+
+function SignupForm({isSignup, setIsSignup, setIsSignupOpen}:SignUpFormProps) {
     const [nickName, setNickName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
-        // todo: signup api 연동
+        try {
+            await signup(nickName, email, password);
+            setIsSignup(true);
+            alert('회원가입 성공');
+            setNickName('');
+            setEmail('');
+            setPassword('');
+            setIsSignupOpen(false);
+        } catch{
+            alert('회원가입 실패');
+        }
     }
 
     return(
