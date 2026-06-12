@@ -5,17 +5,19 @@ import LoginPage from "./pages/LoginPage.tsx";
 import SignupPage from "./pages/SignupPage.tsx";
 import BoardPage from "./pages/BoardPage.tsx";
 import BoardDetailPage from "./pages/BoardDetailPage.tsx";
+import BoardWritePage from "./pages/BoardWritePage.tsx";
 
 
 function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<Navigate to="/login" replace />}/>
+                <Route path="/" element={<Navigate to="/login" replace/>}/>
                 <Route path="/login" element={<LoginPage/>}/>
                 <Route path="/signup" element={<SignupPage/>}/>
                 <Route path="/home" element={<HomePage/>}/>
                 <Route path="/board" element={<BoardPage/>}/>
+                <Route path="/board/write" element={<BoardWritePage/>}/>
                 <Route path="/board/:id" element={<BoardDetailPage/>}/>
             </Routes>
         </BrowserRouter>
