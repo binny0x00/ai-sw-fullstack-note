@@ -13,19 +13,22 @@ import {getPosts, type Post} from '../api';
 function BoardPage() {
     const [keyword, setKeyword] = useState("");
     const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [posts, setPosts] = useState<Post[]>([]);
 
     useEffect(() => {
-        async function fetchPosts(){
-            try{
-                const data = await getPosts();
-                setPosts(data);
+        async function fetchPosts() {
+            try {
+                const data = await getPosts(page, 10);
+                setPosts(data.items);
+                setTotalPages(data.totalPages);
             } catch {
                 alert('게시물 목록 조회 실패');
             }
         }
+
         fetchPosts();
-    }, []);
+    }, [page]);
 
     function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -79,9 +82,9 @@ function BoardPage() {
                     이전
                 </button>
 
-                <span>{page}</span>
+                <span>{page} / {totalPages}</span>
 
-                <button type="button" onClick={() => setPage(page + 1)}>
+                <button type="button" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
                     다음
                 </button>
             </div>
