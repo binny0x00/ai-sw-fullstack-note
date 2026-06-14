@@ -7,27 +7,25 @@
 */
 import './css/Board.css';
 import {Link} from "react-router-dom";
-import {useState} from "react";
-
-type Post = {
-    id: number,
-    title: string,
-    author: string,
-    commentCount: number,
-}
-
-const posts: Post[] = [
-    {
-        id: 1,
-        title: "첫 번째 게시글",
-        author: "owner",
-        commentCount: 1,
-    }
-]
+import {useState, useEffect} from "react";
+import {getPosts, type Post} from '../api';
 
 function BoardPage() {
     const [keyword, setKeyword] = useState("");
     const [page, setPage] = useState(1);
+    const [posts, setPosts] = useState<Post[]>([]);
+
+    useEffect(() => {
+        async function fetchPosts(){
+            try{
+                const data = await getPosts();
+                setPosts(data);
+            } catch {
+                alert('게시물 목록 조회 실패');
+            }
+        }
+        fetchPosts();
+    }, []);
 
     function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
@@ -69,8 +67,8 @@ function BoardPage() {
                         <td>
                             <Link to={`/board/${post.id}`}>{post.title}</Link>
                         </td>
-                        <td>{post.author}</td>
-                        <td>{post.commentCount}</td>
+                        <td>{post.user?.nickname ?? post.userId}</td>
+                        <td>0</td>
                     </tr>
                 ))}
                 </tbody>
