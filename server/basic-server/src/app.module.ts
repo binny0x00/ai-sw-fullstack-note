@@ -9,15 +9,17 @@ import {ConfigModule, ConfigService} from '@nestjs/config';
 import {AuthModule} from "./auth/auth.module";
 import {TypeOrmModule} from "@nestjs/typeorm";
 import {typeOrmConfig} from "./config/typeorm.config";
+import {PostsModule} from './posts/posts.module';
 
 @Module({
     imports: [
         ConfigModule.forRoot({isGlobal: true}),
         AuthModule,
         TypeOrmModule.forRootAsync({
-          inject: [ConfigService],
-          useFactory: typeOrmConfig,
-        })
+            inject: [ConfigService],
+            useFactory: typeOrmConfig,
+        }),
+        PostsModule,
     ],
     controllers: [AppController],
     providers: [AppService],

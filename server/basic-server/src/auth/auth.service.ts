@@ -3,7 +3,8 @@ import {LoginDto} from './dto/login.dto';
 import {SignupDto} from './dto/signup.dto';
 import {InjectRepository} from "@nestjs/typeorm";
 import {Repository} from "typeorm";
-import {User} from '../users/user.entity'
+import {User} from './entities/user.entity'
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
@@ -12,17 +13,18 @@ export class AuthService {
         private readonly userRepository: Repository<User>,
     ) {}
     async signup(signupDto: SignupDto) {
-        // todo : 토큰 발급 및 저장
-        // todo : 비밀번호 해싱
         const existingUser = await this.userRepository.findOne({where: {email: signupDto.email}});
         if (existingUser) {
             throw new UnprocessableEntityException('이미 사용중인 이메일입니다.');
         }
 
+        // 비밀번호 해싱
+        const hashedPassword = await bcrypt.hash(signupDto.password, 12);
+
         const user = this.userRepository.create({
             nickname: signupDto.nickname,
             email: signupDto.email,
-            password: signupDto.password,
+            password: hashedPassword,
         });
 
         const savedUser = await this.userRepository.save(user);
@@ -40,7 +42,13 @@ export class AuthService {
     async login(loginDto: LoginDto) {
         const user = await this.userRepository.findOne({where: {email: loginDto.email}});
 
-        if (!user || user.password !== loginDto.password) {
+        if (!user) {
+            throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
+        }
+
+        const isPasswordValid = await bcrypt.compare(loginDto.password, user.password);
+
+        if (!isPasswordValid) {
             throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다.');
         }
 
