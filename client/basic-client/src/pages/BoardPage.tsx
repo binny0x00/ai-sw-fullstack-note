@@ -70,6 +70,11 @@ function BoardPage() {
                         <td>{post.id}</td>
                         <td>
                             <Link to={`/board/${post.id}`}>{post.title}</Link>
+                            <div>
+                                {post.tags?.map((tag) => (
+                                    <span key={tag.id}>#{tag.name} </span>
+                                ))}
+                            </div>
                         </td>
                         <td>{post.user?.nickname ?? post.userId}</td>
                         <td>0</td>

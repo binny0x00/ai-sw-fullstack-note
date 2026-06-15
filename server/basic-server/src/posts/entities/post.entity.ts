@@ -3,12 +3,15 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 
 import { User } from '../../auth/entities/user.entity';
+import { Tag } from './tag.entity';
 
 @Entity('posts')
 export class Post {
@@ -25,6 +28,20 @@ export class Post {
   @ManyToOne(() => User, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'userId' })
   user!: User;
+
+  @ManyToMany(() => Tag, (tag) => tag.posts)
+  @JoinTable({
+    name: 'post_tags',
+    joinColumn: {
+      name: 'postId',
+      referencedColumnName: 'id',
+    },
+    inverseJoinColumn: {
+      name: 'tagId',
+      referencedColumnName: 'id',
+    },
+  })
+  tags!: Tag[];
 
   @Column()
   content!: string;

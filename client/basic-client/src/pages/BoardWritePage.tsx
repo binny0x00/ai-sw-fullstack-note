@@ -13,12 +13,18 @@ function BoardWritePage() {
     const navigate = useNavigate();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [tags, setTags] = useState('');
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
         try {
-            await createPost(title, content, 1);
+            const tagNames = tags
+                .split(',')
+                .map((tag) => tag.trim())
+                .filter(Boolean);
+
+            await createPost(title, content, 1, tagNames);
             alert('게시글 작성 성공');
             navigate('/board');
         } catch {
@@ -48,6 +54,16 @@ function BoardWritePage() {
                         value={content}
                         placeholder={"내용을 입력하세요."}
                         onChange={(e) => setContent(e.target.value)}
+                    />
+                </label>
+
+                <label className="boardTitle">
+                    태그
+                    <input
+                        type="text"
+                        value={tags}
+                        placeholder={"react, nestjs 처럼 쉼표로 구분"}
+                        onChange={(e) => setTags(e.target.value)}
                     />
                 </label>
 

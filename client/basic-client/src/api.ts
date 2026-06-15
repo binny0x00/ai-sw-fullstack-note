@@ -45,7 +45,15 @@ export type Post = {
         nickname: string;
         email: string;
     }
+    tags?: Tag[];
 }
+
+export type Tag = {
+    id: number;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+};
 
 export type PostListResponse = {
     items: Post[];
@@ -69,13 +77,13 @@ export type Comment = {
     };
 };
 
-export async function createPost(title: string, content: string, userId: number) {
+export async function createPost(title: string, content: string, userId: number, tagNames: string[] = []) {
     const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({title, content, userId}),
+        body: JSON.stringify({title, content, userId, tagNames}),
     });
 
     if (!response.ok) {
@@ -118,13 +126,14 @@ export async function updatePost(
     title: string,
     content: string,
     userId: number,
+    tagNames: string[] = [],
 ) {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({title, content, userId}),
+        body: JSON.stringify({title, content, userId, tagNames}),
     });
 
     if (!response.ok) {

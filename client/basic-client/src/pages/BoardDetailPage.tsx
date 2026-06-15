@@ -17,6 +17,7 @@ function BoardDetailPage() {
     const [post, setPost] = useState<Post | null>(null);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [tags, setTags] = useState('');
     const [comments, setComments] = useState<Comment[]>([]);
     const [commentContent, setCommentContent] = useState('');
 
@@ -31,6 +32,7 @@ function BoardDetailPage() {
                 setPost(postData);
                 setTitle(postData?.title ?? '');
                 setContent(postData?.content ?? '');
+                setTags(postData?.tags?.map((tag) => tag.name).join(', ') ?? '');
                 setComments(commentData);
             } catch {
                 alert('게시글 조회 실패');
@@ -46,7 +48,12 @@ function BoardDetailPage() {
         if (!id || !post) return;
 
         try {
-            await updatePost(Number(id), title, content, post.userId);
+            const tagNames = tags
+                .split(',')
+                .map((tag) => tag.trim())
+                .filter(Boolean);
+
+            await updatePost(Number(id), title, content, post.userId, tagNames);
             alert('게시글 수정 성공');
             navigate('/board');
         } catch {
@@ -99,6 +106,16 @@ function BoardDetailPage() {
                 <label className="boardTitle">
                     내용
                     <textarea value={content} onChange={(e) => setContent(e.target.value)} />
+                </label>
+
+                <label className="boardTitle">
+                    태그
+                    <input
+                        type="text"
+                        value={tags}
+                        placeholder={"react, nestjs 처럼 쉼표로 구분"}
+                        onChange={(e) => setTags(e.target.value)}
+                    />
                 </label>
 
                 <button type="submit" className="writeButton">수정하기</button>

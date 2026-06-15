@@ -3,6 +3,7 @@ import { TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Post } from '../posts/entities/post.entity';
 import { Comment } from '../posts/entities/comment.emtity';
+import { Tag } from '../posts/entities/tag.entity';
 
 export const typeOrmConfig = (
   configService: ConfigService,
@@ -13,6 +14,6 @@ export const typeOrmConfig = (
   username: configService.get<string>('DB_USERNAME'),
   password: configService.get<string>('DB_PASSWORD'),
   database: configService.get<string>('DB_DATABASE'),
-  entities: [User, Post, Comment],
+  entities: [User, Post, Comment, Tag],
   synchronize: true,
 });

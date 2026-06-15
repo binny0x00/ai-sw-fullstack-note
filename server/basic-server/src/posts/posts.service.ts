@@ -1,12 +1,13 @@
 import {Injectable} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {ILike, Repository} from 'typeorm';
+import {ILike, In, Repository} from 'typeorm';
 import {CreatePostDto} from './dto/create-post.dto';
 import {UpdatePostDto} from './dto/update-post.dto';
 import {Post} from './entities/post.entity';
 import {PostQueryDto} from './dto/post-query.dto';
 import {Comment} from './entities/comment.emtity';
 import {CreateCommentDto} from './dto/create-comment.dto';
+import {Tag} from './entities/tag.entity';
 
 @Injectable()
 export class PostsService {
@@ -15,14 +16,19 @@ export class PostsService {
         private readonly postRepository: Repository<Post>,
         @InjectRepository(Comment)
         private readonly commentRepository: Repository<Comment>,
+        @InjectRepository(Tag)
+        private readonly tagRepository: Repository<Tag>,
     ) {
     }
 
     async create(createPostDto: CreatePostDto) {
+        const tags = await this.findOrCreateTags(createPostDto.tagNames);
+
         const post = this.postRepository.create({
             title: createPostDto.title,
             content: createPostDto.content,
             userId: createPostDto.userId,
+            tags,
         });
 
         const savedPost = await this.postRepository.save(post);
@@ -52,6 +58,7 @@ export class PostsService {
             where,
             relations: {
                 user: true,
+                tags: true,
             },
             order: {
                 createdAt: 'DESC',
@@ -74,12 +81,45 @@ export class PostsService {
             where: {id},
             relations: {
                 user: true,
+                tags: true,
             },
         });
     }
 
-    update(id: number, updatePostDto: UpdatePostDto) {
-        return this.postRepository.update(id, updatePostDto);
+    async update(id: number, updatePostDto: UpdatePostDto) {
+        const post = await this.postRepository.findOne({
+            where: {id},
+            relations: {
+                tags: true,
+            },
+        });
+
+        if (!post) {
+            return null;
+        }
+
+        if (updatePostDto.title !== undefined) {
+            post.title = updatePostDto.title;
+        }
+
+        if (updatePostDto.content !== undefined) {
+            post.content = updatePostDto.content;
+        }
+
+        if (updatePostDto.userId !== undefined) {
+            post.userId = updatePostDto.userId;
+        }
+
+        if (updatePostDto.tagNames !== undefined) {
+            post.tags = await this.findOrCreateTags(updatePostDto.tagNames);
+        }
+
+        const savedPost = await this.postRepository.save(post);
+
+        return {
+            success: true,
+            post: savedPost,
+        };
     }
 
     remove(id: number) {
@@ -111,5 +151,38 @@ export class PostsService {
             success: true,
             comment: savedComment,
         };
+    }
+
+    private normalizeTagNames(tagNames?: string[]) {
+        return [
+            ...new Set(
+                (tagNames ?? [])
+                    .map((tagName) => tagName.trim().toLowerCase())
+                    .filter(Boolean),
+            ),
+        ];
+    }
+
+    private async findOrCreateTags(tagNames?: string[]) {
+        const names = this.normalizeTagNames(tagNames);
+
+        if (names.length === 0) {
+            return [];
+        }
+
+        const existingTags = await this.tagRepository.find({
+            where: {
+                name: In(names),
+            },
+        });
+        const existingNames = new Set(existingTags.map((tag) => tag.name));
+        const newTags = names
+            .filter((name) => !existingNames.has(name))
+            .map((name) => this.tagRepository.create({name}));
+        const savedNewTags = newTags.length > 0
+            ? await this.tagRepository.save(newTags)
+            : [];
+
+        return [...existingTags, ...savedNewTags];
     }
 }
