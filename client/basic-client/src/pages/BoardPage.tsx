@@ -15,11 +15,12 @@ function BoardPage() {
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [posts, setPosts] = useState<Post[]>([]);
+    const [searchKeyword, setSearchKeyword] = useState("");
 
     useEffect(() => {
         async function fetchPosts() {
             try {
-                const data = await getPosts(page, 10);
+                const data = await getPosts(page, 10, searchKeyword);
                 setPosts(data.items);
                 setTotalPages(data.totalPages);
             } catch {
@@ -28,12 +29,12 @@ function BoardPage() {
         }
 
         fetchPosts();
-    }, [page]);
+    }, [page, searchKeyword]);
 
     function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
         setPage(1);
-        // todo : 검색 API 연동
+        setSearchKeyword(keyword);
     }
 
     return (

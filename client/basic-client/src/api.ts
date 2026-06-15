@@ -71,12 +71,15 @@ export async function createPost(title: string, content: string, userId: number)
     return response.json();
 }
 
-export async function getPosts(page = 1, limit = 10): Promise<PostListResponse> {
+export async function getPosts(page = 1, limit = 10, keyword = ''): Promise<PostListResponse> {
     const params = new URLSearchParams({
         page: String(page),
         limit: String(limit),
     });
 
+    if (keyword.trim()) {
+        params.set('keyword', keyword.trim());
+    }
     const response = await fetch(`${API_BASE_URL}/posts?${params.toString()}`);
 
     if (!response.ok) {

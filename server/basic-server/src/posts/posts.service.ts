@@ -1,6 +1,6 @@
 import {Injectable} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
-import {Repository} from 'typeorm';
+import {ILike, Repository} from 'typeorm';
 import {CreatePostDto} from './dto/create-post.dto';
 import {UpdatePostDto} from './dto/update-post.dto';
 import {Post} from './entities/post.entity';
@@ -32,11 +32,20 @@ export class PostsService {
     async findAll(query: PostQueryDto) {
         const page = Number(query.page ?? 1);
         const limit = Number(query.limit ?? 10);
+        const keyword = query.keyword?.trim();
 
         const safePage = Number.isNaN(page) || page < 1 ? 1 : page;
         const safeLimit = Number.isNaN(limit) || limit < 1 ? 10 : limit;
 
+        const where = keyword
+            ? [
+                {title: ILike(`%${keyword}%`)},
+                {content: ILike(`%${keyword}%`)},
+            ]
+            : undefined;
+
         const [items, total] = await this.postRepository.findAndCount({
+            where,
             relations: {
                 user: true,
             },
