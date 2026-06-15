@@ -5,13 +5,18 @@ import {
     Body,
     Patch,
     Param,
-    Delete, Query,
+    Delete,
+    Query,
+    Req,
+    UseGuards,
 } from '@nestjs/common';
 import {PostsService} from './posts.service';
 import {CreatePostDto} from './dto/create-post.dto';
 import {UpdatePostDto} from './dto/update-post.dto';
 import {PostQueryDto} from "./dto/post-query.dto";
 import {CreateCommentDto} from './dto/create-comment.dto';
+import {JwtAuthGuard} from '../auth/jwt-auth.guard';
+import type {AuthenticatedRequest} from '../auth/jwt-auth.guard';
 
 @Controller('posts')
 export class PostsController {
@@ -19,8 +24,9 @@ export class PostsController {
     }
 
     @Post()
-    create(@Body() createPostDto: CreatePostDto) {
-        return this.postsService.create(createPostDto);
+    @UseGuards(JwtAuthGuard)
+    create(@Body() createPostDto: CreatePostDto, @Req() request: AuthenticatedRequest) {
+        return this.postsService.create(createPostDto, request.user.sub);
     }
 
     @Get()
@@ -34,11 +40,13 @@ export class PostsController {
     }
 
     @Post(':postId/comments')
+    @UseGuards(JwtAuthGuard)
     createComment(
         @Param('postId') postId: string,
         @Body() createCommentDto: CreateCommentDto,
+        @Req() request: AuthenticatedRequest,
     ) {
-        return this.postsService.createComment(+postId, createCommentDto);
+        return this.postsService.createComment(+postId, createCommentDto, request.user.sub);
     }
 
     @Get(':id')
@@ -47,12 +55,20 @@ export class PostsController {
     }
 
     @Patch(':id')
+    @UseGuards(JwtAuthGuard)
     update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
         return this.postsService.update(+id, updatePostDto);
     }
 
     @Delete(':id')
+    @UseGuards(JwtAuthGuard)
     remove(@Param('id') id: string) {
         return this.postsService.remove(+id);
+    }
+
+    @Delete('comments/:commentId')
+    @UseGuards(JwtAuthGuard)
+    removeComment(@Param('commentId') commentId: string) {
+        return this.postsService.removeComment(+commentId);
     }
 }

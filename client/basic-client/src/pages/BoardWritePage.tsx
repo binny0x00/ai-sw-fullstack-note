@@ -24,7 +24,7 @@ function BoardWritePage() {
                 .map((tag) => tag.trim())
                 .filter(Boolean);
 
-            await createPost(title, content, 1, tagNames);
+            await createPost(title, content, tagNames);
             alert('게시글 작성 성공');
             navigate('/board');
         } catch {

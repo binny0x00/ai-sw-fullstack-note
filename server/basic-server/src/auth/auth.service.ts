@@ -10,12 +10,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import * as bcrypt from 'bcrypt';
+import {JwtService} from '@nestjs/jwt';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly jwtService: JwtService,
   ) {}
   async signup(signupDto: SignupDto) {
     const existingUser = await this.userRepository.findOne({
@@ -68,8 +70,15 @@ export class AuthService {
       );
     }
 
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      email: user.email,
+      nickname: user.nickname
+    });
+
     return {
       success: true,
+      accessToken,
       user: {
         id: user.id,
         nickname: user.nickname,

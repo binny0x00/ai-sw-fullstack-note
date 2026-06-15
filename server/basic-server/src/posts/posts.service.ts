@@ -21,13 +21,13 @@ export class PostsService {
     ) {
     }
 
-    async create(createPostDto: CreatePostDto) {
+    async create(createPostDto: CreatePostDto, userId: number) {
         const tags = await this.findOrCreateTags(createPostDto.tagNames);
 
         const post = this.postRepository.create({
             title: createPostDto.title,
             content: createPostDto.content,
-            userId: createPostDto.userId,
+            userId,
             tags,
         });
 
@@ -138,11 +138,11 @@ export class PostsService {
         });
     }
 
-    async createComment(postId: number, createCommentDto: CreateCommentDto) {
+    async createComment(postId: number, createCommentDto: CreateCommentDto, userId: number) {
         const comment = this.commentRepository.create({
             postId,
             content: createCommentDto.content,
-            userId: createCommentDto.userId,
+            userId,
         });
 
         const savedComment = await this.commentRepository.save(comment);
@@ -151,6 +151,10 @@ export class PostsService {
             success: true,
             comment: savedComment,
         };
+    }
+
+    removeComment(commentId: number) {
+        return this.commentRepository.delete(commentId);
     }
 
     private normalizeTagNames(tagNames?: string[]) {

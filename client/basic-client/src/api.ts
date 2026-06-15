@@ -1,5 +1,13 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+function getAuthHeader(): Record<string, string> {
+    const token = localStorage.getItem('accessToken');
+
+    return token ?
+        {Authorization: `Bearer ${token}`}
+        : {};
+}
+
 export async function login(email: string, password: string) {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
@@ -14,6 +22,11 @@ export async function login(email: string, password: string) {
     if (!response.ok) {
         throw new Error('로그인 실패');
     }
+
+    const data = await response.json();
+    localStorage.setItem('accessToken', data.accessToken);
+
+    return data;
 }
 
 export async function signup(nickname: string, email: string, password: string) {
@@ -77,13 +90,14 @@ export type Comment = {
     };
 };
 
-export async function createPost(title: string, content: string, userId: number, tagNames: string[] = []) {
+export async function createPost(title: string, content: string, tagNames: string[] = []) {
     const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            ...getAuthHeader(),
         },
-        body: JSON.stringify({title, content, userId, tagNames}),
+        body: JSON.stringify({title, content, tagNames}),
     });
 
     if (!response.ok) {
@@ -125,15 +139,15 @@ export async function updatePost(
     id: number,
     title: string,
     content: string,
-    userId: number,
     tagNames: string[] = [],
 ) {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
+            ...getAuthHeader(),
         },
-        body: JSON.stringify({title, content, userId, tagNames}),
+        body: JSON.stringify({title, content, tagNames}),
     });
 
     if (!response.ok) {
@@ -146,6 +160,9 @@ export async function updatePost(
 export async function deletePost(id: number) {
     const response = await fetch(`${API_BASE_URL}/posts/${id}`, {
         method: 'DELETE',
+        headers: {
+            ...getAuthHeader(),
+        }
     });
 
     if (!response.ok) {
@@ -165,18 +182,32 @@ export async function getComments(postId: number): Promise<Comment[]> {
     return response.json();
 }
 
-export async function createComment(postId: number, content: string, userId: number) {
+export async function createComment(postId: number, content: string) {
     const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            ...getAuthHeader(),
         },
-        body: JSON.stringify({content, userId}),
+        body: JSON.stringify({content}),
     });
 
     if (!response.ok) {
         throw new Error('댓글 작성 실패');
     }
 
+    return response.json();
+}
+
+export async function deleteComment(id: number) {
+    const response = await fetch(`${API_BASE_URL}/posts/comments/${id}`, {
+        method: 'DELETE',
+        headers: {
+            ...getAuthHeader(),
+        }
+    });
+    if (!response.ok) {
+        throw new Error('댓글 삭제 실패');
+    }
     return response.json();
 }

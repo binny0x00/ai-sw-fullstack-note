@@ -8,7 +8,16 @@
 import './css/Board.css'
 import {Link, useNavigate, useParams} from "react-router-dom";
 import {useEffect, useState} from "react";
-import {createComment, deletePost, getComments, getPost, updatePost, type Comment, type Post} from "../api.ts";
+import {
+    createComment,
+    deletePost,
+    getComments,
+    getPost,
+    updatePost,
+    type Comment,
+    type Post,
+    deleteComment
+} from "../api.ts";
 
 function BoardDetailPage() {
     const {id} = useParams();
@@ -53,7 +62,7 @@ function BoardDetailPage() {
                 .map((tag) => tag.trim())
                 .filter(Boolean);
 
-            await updatePost(Number(id), title, content, post.userId, tagNames);
+            await updatePost(Number(id), title, content, tagNames);
             alert('게시글 수정 성공');
             navigate('/board');
         } catch {
@@ -79,12 +88,24 @@ function BoardDetailPage() {
         if (!id || !commentContent.trim()) return;
 
         try {
-            await createComment(Number(id), commentContent, 1);
+            await createComment(Number(id), commentContent);
             const commentData = await getComments(Number(id));
             setComments(commentData);
             setCommentContent('');
         } catch {
             alert('댓글 작성 실패');
+        }
+    }
+
+    async function handleDeleteComment(commentId: number){
+        if (!id) return;
+
+        try {
+            await deleteComment(commentId);
+            const commentData = await getComments(Number(id));
+            setComments(commentData);
+        } catch {
+            alert('댓글 삭제 실패');
         }
     }
 
@@ -129,6 +150,7 @@ function BoardDetailPage() {
                     <th>번호</th>
                     <th>작성자</th>
                     <th>댓글 내용</th>
+                    <th>삭제</th>
                 </tr>
                 </thead>
 
@@ -138,6 +160,7 @@ function BoardDetailPage() {
                         <td>{comment.id}</td>
                         <td>{comment.user?.nickname ?? comment.userId}</td>
                         <td>{comment.content}</td>
+                        <td><button type={"button"} onClick={() => handleDeleteComment(comment.id)}>삭제</button></td>
                     </tr>
                 ))}
                 </tbody>
