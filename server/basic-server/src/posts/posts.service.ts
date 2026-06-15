@@ -5,12 +5,16 @@ import {CreatePostDto} from './dto/create-post.dto';
 import {UpdatePostDto} from './dto/update-post.dto';
 import {Post} from './entities/post.entity';
 import {PostQueryDto} from './dto/post-query.dto';
+import {Comment} from './entities/comment.emtity';
+import {CreateCommentDto} from './dto/create-comment.dto';
 
 @Injectable()
 export class PostsService {
     constructor(
         @InjectRepository(Post)
         private readonly postRepository: Repository<Post>,
+        @InjectRepository(Comment)
+        private readonly commentRepository: Repository<Comment>,
     ) {
     }
 
@@ -80,5 +84,32 @@ export class PostsService {
 
     remove(id: number) {
         return this.postRepository.delete(id);
+    }
+
+    findComments(postId: number) {
+        return this.commentRepository.find({
+            where: {postId},
+            relations: {
+                user: true,
+            },
+            order: {
+                createdAt: 'ASC',
+            },
+        });
+    }
+
+    async createComment(postId: number, createCommentDto: CreateCommentDto) {
+        const comment = this.commentRepository.create({
+            postId,
+            content: createCommentDto.content,
+            userId: createCommentDto.userId,
+        });
+
+        const savedComment = await this.commentRepository.save(comment);
+
+        return {
+            success: true,
+            comment: savedComment,
+        };
     }
 }

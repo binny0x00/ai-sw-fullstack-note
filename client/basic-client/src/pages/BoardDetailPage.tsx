@@ -8,21 +8,7 @@
 import './css/Board.css'
 import {Link, useNavigate, useParams} from "react-router-dom";
 import {useEffect, useState} from "react";
-import {deletePost, getPost, updatePost, type Post} from "../api.ts";
-
-type Comment = {
-    id: number,
-    author: string,
-    body: string,
-}
-
-const comments: Comment[] = [
-    {
-        id: 1,
-        author: "owner",
-        body: "흥미로운 글이네요.",
-    }
-]
+import {createComment, deletePost, getComments, getPost, updatePost, type Comment, type Post} from "../api.ts";
 
 function BoardDetailPage() {
     const {id} = useParams();
@@ -31,16 +17,21 @@ function BoardDetailPage() {
     const [post, setPost] = useState<Post | null>(null);
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [commentContent, setCommentContent] = useState('');
 
     useEffect(() => {
         async function fetchPost() {
             if (!id) return;
 
             try {
-                const data = await getPost(Number(id));
-                setPost(data);
-                setTitle(data?.title ?? '');
-                setContent(data?.content ?? '');
+                const postData = await getPost(Number(id));
+                const commentData = await getComments(Number(id));
+
+                setPost(postData);
+                setTitle(postData?.title ?? '');
+                setContent(postData?.content ?? '');
+                setComments(commentData);
             } catch {
                 alert('게시글 조회 실패');
             }
@@ -72,6 +63,21 @@ function BoardDetailPage() {
             navigate('/board');
         } catch {
             alert('게시글 삭제 실패');
+        }
+    }
+
+    async function handleCreateComment(e: React.FormEvent<HTMLFormElement>) {
+        e.preventDefault();
+
+        if (!id || !commentContent.trim()) return;
+
+        try {
+            await createComment(Number(id), commentContent, 1);
+            const commentData = await getComments(Number(id));
+            setComments(commentData);
+            setCommentContent('');
+        } catch {
+            alert('댓글 작성 실패');
         }
     }
 
@@ -110,19 +116,21 @@ function BoardDetailPage() {
                 </thead>
 
                 <tbody>
-                {comments.map((comment: Comment) => (
+                {comments.map((comment) => (
                     <tr key={comment.id}>
                         <td>{comment.id}</td>
-                        <td>{comment.author}</td>
-                        <td>{comment.body}</td>
+                        <td>{comment.user?.nickname ?? comment.userId}</td>
+                        <td>{comment.content}</td>
                     </tr>
                 ))}
                 </tbody>
             </table>
 
-            <form className={"boardForm"}>
+            <form className={"boardForm"} onSubmit={handleCreateComment}>
                 <textarea
+                    value={commentContent}
                     placeholder={"댓글을 입력하세요."}
+                    onChange={(e) => setCommentContent(e.target.value)}
                 />
                 <button type="submit" className={"writeButton"}>등록하기</button>
             </form>

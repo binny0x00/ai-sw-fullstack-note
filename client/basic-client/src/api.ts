@@ -55,6 +55,20 @@ export type PostListResponse = {
     totalPages: number;
 };
 
+export type Comment = {
+    id: number;
+    content: string;
+    postId: number;
+    userId: number;
+    createdAt: string;
+    updatedAt: string;
+    user?: {
+        id: number;
+        nickname: string;
+        email: string;
+    };
+};
+
 export async function createPost(title: string, content: string, userId: number) {
     const response = await fetch(`${API_BASE_URL}/posts`, {
         method: 'POST',
@@ -127,6 +141,32 @@ export async function deletePost(id: number) {
 
     if (!response.ok) {
         throw new Error('게시글 삭제 실패');
+    }
+
+    return response.json();
+}
+
+export async function getComments(postId: number): Promise<Comment[]> {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`);
+
+    if (!response.ok) {
+        throw new Error('댓글 목록 조회 실패');
+    }
+
+    return response.json();
+}
+
+export async function createComment(postId: number, content: string, userId: number) {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({content, userId}),
+    });
+
+    if (!response.ok) {
+        throw new Error('댓글 작성 실패');
     }
 
     return response.json();

@@ -11,6 +11,7 @@ import {PostsService} from './posts.service';
 import {CreatePostDto} from './dto/create-post.dto';
 import {UpdatePostDto} from './dto/update-post.dto';
 import {PostQueryDto} from "./dto/post-query.dto";
+import {CreateCommentDto} from './dto/create-comment.dto';
 
 @Controller('posts')
 export class PostsController {
@@ -25,6 +26,19 @@ export class PostsController {
     @Get()
     findAll(@Query() query: PostQueryDto) {
         return this.postsService.findAll(query);
+    }
+
+    @Get(':postId/comments')
+    findComments(@Param('postId') postId: string) {
+        return this.postsService.findComments(+postId);
+    }
+
+    @Post(':postId/comments')
+    createComment(
+        @Param('postId') postId: string,
+        @Body() createCommentDto: CreateCommentDto,
+    ) {
+        return this.postsService.createComment(+postId, createCommentDto);
     }
 
     @Get(':id')
