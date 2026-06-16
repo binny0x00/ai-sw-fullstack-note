@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_embedding_model: str = "text-embedding-3-small"
     openai_chat_model: str = "gpt-4.1-mini"
+    github_token: str | None = None
+    github_project_owner: str | None = None
+    github_project_title: str = "ai-inquiry"
+    github_project_status_field: str = "Status"
+    github_project_status_option: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -15,4 +20,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-

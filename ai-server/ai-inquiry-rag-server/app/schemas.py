@@ -49,7 +49,6 @@ class AnalysisResponse(BaseModel):
 class GitHubIssueApprovalRequest(BaseModel):
     approved: bool
     repository: str = Field(
-        default="owner/repository",
+        default="binny0x00/ai-sw-fullstack-note",
         description="GitHub repository in owner/name format.",
     )
-

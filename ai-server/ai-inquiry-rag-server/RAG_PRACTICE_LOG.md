@@ -427,7 +427,21 @@ curl http://127.0.0.1:8000/inquiries/1
 
 ## 15. GitHub Issue 생성 승인 흐름 테스트
 
-현재 코드는 실제 GitHub Issue를 생성하지 않고, MCP 실행 경계를 보여주기 위해 실행 로그를 저장합니다.
+현재 코드는 승인 요청이 들어오면 FastAPI가 MCP client로
+`scripts/github_mcp_server.py`의 `create_github_issue_with_project` tool을 호출합니다.
+MCP tool은 GitHub REST API로 실제 Issue를 생성하고,
+GitHub GraphQL API로 `ai-inquiry` Projects 보드에 Issue를 등록한 뒤
+요청/응답 결과를 `mcp_execution_logs` 테이블에 저장합니다.
+
+`.env`에 Issues와 Projects 쓰기 권한이 있는 GitHub 토큰이 필요합니다.
+
+```env
+GITHUB_TOKEN="github_pat_..."
+GITHUB_PROJECT_OWNER="binny0x00"
+GITHUB_PROJECT_TITLE="ai-inquiry"
+GITHUB_PROJECT_STATUS_FIELD="Status"
+GITHUB_PROJECT_STATUS_OPTION="Todo"
+```
 
 ### 승인 요청
 
@@ -445,7 +459,7 @@ curl -X POST http://127.0.0.1:8000/inquiries/1/github-issue \
 ```json
 {
   "tool_name": "github_issue",
-  "status": "prepared"
+  "status": "created"
 }
 ```
 
@@ -456,18 +470,36 @@ curl -X POST http://127.0.0.1:8000/inquiries/1/github-issue \
   "id": 1,
   "inquiry_id": 1,
   "tool_name": "github_issue",
-  "status": "prepared",
+  "status": "created",
   "request_payload": {
-    "body": "로그인 버튼을 눌러도 아무 반응이 없고, 크롬 개발자 도구에는 CORS 에러가 표시됩니다.",
-    "title": "로그인 버튼 클릭 시 반응 없음",
+    "mcp_server": "/.../scripts/github_mcp_server.py",
+    "tool_name": "create_github_issue_with_project",
+    "body": "## 문의 내용\n\n로그인 버튼을 눌러도 아무 반응이 없고, 크롬 개발자 도구에는 CORS 에러가 표시됩니다.\n\n## AI 분석 요약\n\n...\n\n## 메타데이터\n\n- inquiry_id: 1\n- inquiry_type: bug\n- urgency: high\n- suggested_action: github_issue_recommended\n- customer_email: unknown",
+    "title": "[bug] 로그인 버튼 클릭 시 반응 없음",
+    "inquiry_id": 1,
     "urgency": "high",
     "repository": "your-name/your-repo",
     "inquiry_type": "bug",
     "suggested_action": "github_issue_recommended"
   },
   "response_payload": {
-    "title": "[bug] 로그인 버튼 클릭 시 반응 없음",
-    "message": "GitHub Issue creation is prepared. Connect a real MCP GitHub tool or GitHub API client here."
+    "message": "GitHub Issue was created.",
+    "issue_number": 1,
+    "issue_node_id": "I_kwDO...",
+    "issue_url": "https://github.com/your-name/your-repo/issues/1",
+    "api_url": "https://api.github.com/repos/your-name/your-repo/issues/1",
+    "project": {
+      "status": "added",
+      "project_id": "PVT_kwHO...",
+      "project_title": "ai-inquiry",
+      "project_number": 1,
+      "project_item_id": "PVTI_lAHO...",
+      "status_field": {
+        "status": "updated",
+        "field": "Status",
+        "option": "Todo"
+      }
+    }
   },
   "created_at": "2026-06-16T01:07:20.308303Z"
 }%
@@ -526,7 +558,7 @@ curl -X POST http://127.0.0.1:8000/inquiries/1/github-issue \
 | `GET /inquiries`                    | 문의 목록 조회     |          아니오 |      아니오 |
 | `GET /inquiries/{id}`               | 문의 상세 조회     |          아니오 |      아니오 |
 | `POST /inquiries/{id}/analyze`      | RAG 기반 AI 분석 |            예 |        예 |
-| `POST /inquiries/{id}/github-issue` | MCP 실행 로그 저장 |          아니오 |        예 |
+| `POST /inquiries/{id}/github-issue` | GitHub Issue 생성, Projects 등록, MCP 실행 로그 저장 | 아니오 | 예 |
 
 ## 17. 중요한 설계 포인트
 
@@ -615,4 +647,3 @@ curl -X POST http://127.0.0.1:8000/inquiries/1/analyze
 - AI 분석 결과 재분석 이력 관리
 - pytest 기반 API 테스트 추가
 - Alembic을 사용한 DB migration 관리
-
