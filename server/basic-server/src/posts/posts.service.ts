@@ -8,6 +8,8 @@ import {PostQueryDto} from './dto/post-query.dto';
 import {Comment} from './entities/comment.emtity';
 import {CreateCommentDto} from './dto/create-comment.dto';
 import {Tag} from './entities/tag.entity';
+import {InquiriesService} from '../inquiries/inquiries.service';
+import {AiReviewPostDto} from './dto/ai-review-post.dto';
 
 @Injectable()
 export class PostsService {
@@ -18,6 +20,7 @@ export class PostsService {
         private readonly commentRepository: Repository<Comment>,
         @InjectRepository(Tag)
         private readonly tagRepository: Repository<Tag>,
+        private readonly inquiriesService: InquiriesService,
     ) {
     }
 
@@ -157,6 +160,46 @@ export class PostsService {
         return this.commentRepository.delete(commentId);
     }
 
+    async reviewWithAi(id: number, aiReviewPostDto: AiReviewPostDto) {
+        const post = await this.postRepository.findOne({
+            where: {id},
+            relations: {
+                user: true,
+                tags: true,
+            },
+        });
+
+        if (!post) {
+            return null;
+        }
+
+        const comments = await this.findComments(id);
+        const inquiry = await this.inquiriesService.create({
+            title: `[게시글 AI 검토] ${post.title}`,
+            body: this.buildPostInquiryBody(post, comments),
+            customerEmail: post.user?.email,
+            postId: post.id,
+        });
+        const analysis = await this.inquiriesService.analyze(inquiry.id);
+        const shouldCreateIssue =
+            aiReviewPostDto.autoCreateIssue !== false
+            && analysis.suggestedAction === 'github_issue_recommended';
+        const githubIssueLog = shouldCreateIssue
+            ? await this.inquiriesService.approveGithubIssue(inquiry.id, {
+                approved: true,
+                repository: aiReviewPostDto.repository,
+            })
+            : null;
+
+        return {
+            inquiry,
+            analysis,
+            githubIssueLog,
+            recommendedAnswer: analysis.answerDraft,
+            shouldCreateIssue,
+        };
+    }
+
     private normalizeTagNames(tagNames?: string[]) {
         return [
             ...new Set(
@@ -188,5 +231,36 @@ export class PostsService {
             : [];
 
         return [...existingTags, ...savedNewTags];
+    }
+
+    private buildPostInquiryBody(post: Post, comments: Comment[]) {
+        const tagText = post.tags?.map((tag) => `#${tag.name}`).join(' ') || '없음';
+        const commentText = comments.length > 0
+            ? comments
+                .map((comment) => {
+                    const author = comment.user?.nickname ?? `user-${comment.userId}`;
+                    return `- ${author}: ${comment.content}`;
+                })
+                .join('\n')
+            : '아직 댓글이 없습니다.';
+
+        return [
+            '게시판에 등록된 문의성 게시글입니다.',
+            '',
+            '## 게시글',
+            `제목: ${post.title}`,
+            `작성자: ${post.user?.nickname ?? post.userId}`,
+            `태그: ${tagText}`,
+            '',
+            post.content,
+            '',
+            '## 댓글 대화',
+            commentText,
+            '',
+            '## AI 검토 기준',
+            '- 이전 문의와 유사하면 참고 문서를 근거로 담당자 답변 초안을 작성합니다.',
+            '- 실제 버그나 개발 조치가 필요하면 GitHub Issue 생성을 권장합니다.',
+            '- 단순 사용 문의면 담당자가 댓글로 답변할 수 있도록 안내합니다.',
+        ].join('\n');
     }
 }

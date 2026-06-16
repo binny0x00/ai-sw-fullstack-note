@@ -1,92 +1,45 @@
-from typing import Any
+from langchain_core.documents import Document
+from langchain_postgres import PGVector
 
-from sqlalchemy import text
-from sqlalchemy.orm import Session
-
-VECTOR_DIMENSIONS = 1536
+from app.config import settings
+from app.rag.embeddings import EmbeddingService
 
 
 class PgVectorStore:
-    def __init__(self, db: Session) -> None:
-        self.db = db
-
-    def upsert_chunks(
-        self,
-        chunks: list[dict[str, Any]],
-        embeddings: list[list[float]],
-    ) -> None:
-        for chunk, embedding in zip(chunks, embeddings):
-            self.db.execute(
-                text(
-                    """
-                    INSERT INTO document_chunks (
-                        id,
-                        source,
-                        title,
-                        category,
-                        chunk_index,
-                        content,
-                        embedding
-                    )
-                    VALUES (
-                        :id,
-                        :source,
-                        :title,
-                        :category,
-                        :chunk_index,
-                        :content,
-                        CAST(:embedding AS vector)
-                    )
-                    ON CONFLICT (id)
-                    DO UPDATE SET
-                        source = EXCLUDED.source,
-                        title = EXCLUDED.title,
-                        category = EXCLUDED.category,
-                        chunk_index = EXCLUDED.chunk_index,
-                        content = EXCLUDED.content,
-                        embedding = EXCLUDED.embedding
-                    """
-                ),
-                {
-                    **chunk,
-                    "embedding": _to_vector_literal(embedding),
-                },
-            )
-
-        self.db.commit()
-
-    def search(
-        self,
-        query_embedding: list[float],
-        top_k: int = 5,
-    ) -> list[dict[str, Any]]:
-        rows = self.db.execute(
-            text(
-                """
-                SELECT
-                    content,
-                    source,
-                    title,
-                    category,
-                    embedding <=> CAST(:query_embedding AS vector) AS distance
-                FROM document_chunks
-                ORDER BY embedding <=> CAST(:query_embedding AS vector)
-                LIMIT :top_k
-                """
-            ),
-            {
-                "query_embedding": _to_vector_literal(query_embedding),
-                "top_k": top_k,
-            },
-        ).mappings()
-
-        return [dict(row) for row in rows]
-
-
-def _to_vector_literal(embedding: list[float]) -> str:
-    if len(embedding) != VECTOR_DIMENSIONS:
-        raise ValueError(
-            f"Expected {VECTOR_DIMENSIONS} dimensions, got {len(embedding)}."
+    def __init__(self) -> None:
+        self.embeddings = EmbeddingService().embeddings
+        self.vector_store = PGVector(
+            embeddings=self.embeddings,
+            connection=settings.database_url,
+            collection_name=settings.rag_collection_name,
+            embedding_length=1536,
+            use_jsonb=True,
         )
 
-    return "[" + ",".join(str(value) for value in embedding) + "]"
+    def replace_documents(self, documents: list[Document], ids: list[str]) -> None:
+        PGVector.from_documents(
+            documents=documents,
+            embedding=self.embeddings,
+            ids=ids,
+            connection=settings.database_url,
+            collection_name=settings.rag_collection_name,
+            pre_delete_collection=True,
+            use_jsonb=True,
+        )
+
+    def search_documents(
+        self,
+        query: str,
+        top_k: int = 5,
+    ) -> list[Document]:
+        results = self.vector_store.similarity_search_with_score(
+            query=query,
+            k=top_k,
+        )
+
+        documents: list[Document] = []
+        for document, distance in results:
+            document.metadata["distance"] = distance
+            documents.append(document)
+
+        return documents

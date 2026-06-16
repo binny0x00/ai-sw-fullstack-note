@@ -2,6 +2,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE IF NOT EXISTS inquiries (
     id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT,
     title TEXT NOT NULL,
     body TEXT NOT NULL,
     customer_email TEXT,
@@ -13,22 +14,6 @@ CREATE TABLE IF NOT EXISTS inquiries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-
-CREATE TABLE IF NOT EXISTS document_chunks (
-    id TEXT PRIMARY KEY,
-    source TEXT NOT NULL,
-    title TEXT NOT NULL,
-    category TEXT NOT NULL,
-    chunk_index INTEGER NOT NULL,
-    content TEXT NOT NULL,
-    embedding vector(1536) NOT NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx
-ON document_chunks
-USING ivfflat (embedding vector_cosine_ops)
-WITH (lists = 100);
 
 CREATE TABLE IF NOT EXISTS ai_analysis_results (
     id BIGSERIAL PRIMARY KEY,

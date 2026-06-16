@@ -54,12 +54,18 @@ ai-inquiry-rag-server/
 ├── docs/
 ├── scripts/
 │   └── ingest_docs.py
-├── sql/
-│   └── schema.sql
-├── docker-compose.yml
 ├── requirements.txt
 ├── .env.example
 └── README.md
+```
+
+PostgreSQL + pgvector 컨테이너 설정과 초기 SQL은 아래 공용 infra 폴더에 둡니다.
+
+```text
+infra/postgres-pgvector/
+├── docker-compose.yml
+└── init/
+    └── 001_schema.sql
 ```
 
 ## 4. 사전 준비
@@ -98,12 +104,14 @@ OPENAI_CHAT_MODEL="gpt-4.1-mini"
 ### 실행 명령어
 
 ```bash
+cd ~/ai-sw-fullstack-note/infra/postgres-pgvector
 docker compose up -d
 ```
 
 ### 확인 명령어
 
 ```bash
+cd ~/ai-sw-fullstack-note/infra/postgres-pgvector
 docker compose ps
 ```
 

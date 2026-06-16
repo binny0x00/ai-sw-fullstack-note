@@ -1,11 +1,11 @@
 import sys
 from pathlib import Path
 
+from langchain_core.documents import Document
+
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(PROJECT_ROOT))
 
-from app.database import SessionLocal
-from app.rag.embeddings import EmbeddingService
 from app.rag.loader import load_markdown_documents
 from app.rag.splitter import split_text
 from app.rag.vector_store import PgVectorStore
@@ -13,38 +13,36 @@ from app.rag.vector_store import PgVectorStore
 
 def main() -> None:
     raw_documents = load_markdown_documents("docs")
-    chunks: list[dict] = []
+    langchain_documents: list[Document] = []
+    ids: list[str] = []
 
     for document in raw_documents:
         split_chunks = split_text(document["content"])
 
         for index, chunk in enumerate(split_chunks):
-            chunks.append(
-                {
-                    "id": f"{document['source']}:{index}",
-                    "source": document["source"],
-                    "title": document["title"],
-                    "category": document["category"],
-                    "chunk_index": index,
-                    "content": chunk,
-                }
+            ids.append(f"{document['source']}:{index}")
+            langchain_documents.append(
+                Document(
+                    page_content=chunk,
+                    metadata={
+                        "source": document["source"],
+                        "title": document["title"],
+                        "category": document["category"],
+                        "chunk_index": index,
+                    },
+                )
             )
 
-    if not chunks:
+    if not langchain_documents:
         print("No documents found.")
         return
 
-    embeddings = EmbeddingService().create_many(
-        [chunk["content"] for chunk in chunks]
+    PgVectorStore().replace_documents(langchain_documents, ids)
+
+    print(
+        f"Ingested {len(langchain_documents)} chunks "
+        f"from {len(raw_documents)} documents."
     )
-
-    db = SessionLocal()
-    try:
-        PgVectorStore(db).upsert_chunks(chunks, embeddings)
-    finally:
-        db.close()
-
-    print(f"Ingested {len(chunks)} chunks from {len(raw_documents)} documents.")
 
 
 if __name__ == "__main__":

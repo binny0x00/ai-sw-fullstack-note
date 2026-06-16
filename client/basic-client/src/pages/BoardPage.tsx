@@ -40,6 +40,7 @@ function BoardPage() {
     return (
         <>
             <h1>게시판</h1>
+            <Link to="/home" className="backButton">홈으로</Link>
             <div className="boardToolbar">
                 <form className="boardSearchForm" onSubmit={handleSubmit}>
                     <input

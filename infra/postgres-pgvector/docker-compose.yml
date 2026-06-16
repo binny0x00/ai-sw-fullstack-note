@@ -1,7 +1,7 @@
 services:
   postgres:
     image: pgvector/pgvector:pg16
-    container_name: inquiry-rag-postgres
+    container_name: ai-board-postgres
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -10,8 +10,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./sql/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql
+      - ./init/001_schema.sql:/docker-entrypoint-initdb.d/001_schema.sql
 
 volumes:
   postgres_data:
-

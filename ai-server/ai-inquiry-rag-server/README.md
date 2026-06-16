@@ -1,6 +1,6 @@
 # AI Inquiry RAG Server
 
-FastAPI, PostgreSQL, pgvector를 사용해 문의 처리 관리자 시스템의 기본 흐름을 구현한 학습용 서버입니다.
+FastAPI, LangChain, PostgreSQL, pgvector를 사용해 문의 처리 관리자 시스템의 기본 흐름을 구현한 학습용 서버입니다.
 
 ## 핵심 흐름
 
@@ -29,7 +29,9 @@ cp .env.example .env
 ## PostgreSQL 실행
 
 ```bash
+cd ../../infra/postgres-pgvector
 docker compose up -d
+cd ../../ai-server/ai-inquiry-rag-server
 ```
 
 ## 문서 적재
@@ -37,6 +39,11 @@ docker compose up -d
 ```bash
 python scripts/ingest_docs.py
 ```
+
+문서는 LangChain `Document`로 변환되고, `RecursiveCharacterTextSplitter`로
+chunk를 나눈 뒤, `langchain-postgres`의 `PGVector` VectorStore에 저장됩니다.
+VectorStore는 `langchain_pg_collection`, `langchain_pg_embedding` 테이블을
+사용합니다.
 
 ## 서버 실행
 
@@ -56,7 +63,7 @@ uvicorn app.main:app --reload
 
 ## 설계 포인트
 
-- RAG는 문서 검색과 근거 기반 답변까지만 담당합니다.
+- RAG는 LangChain `PGVector` retriever 흐름으로 문서를 검색하고, 근거 기반 답변까지만 담당합니다.
 - Agent는 문의 유형, 긴급도, 외부 액션 필요 여부를 판단합니다.
 - MCP는 외부 도구 실행 경계입니다. FastAPI는 MCP client로 `scripts/github_mcp_server.py`의 `create_github_issue_with_project` tool을 호출합니다.
-- pgvector에는 chunk embedding과 source metadata를 함께 저장합니다.
+- pgvector에는 LangChain PGVector 스키마로 chunk embedding과 source metadata를 함께 저장합니다.

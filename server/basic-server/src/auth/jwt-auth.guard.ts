@@ -6,11 +6,13 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { UserRole } from './entities/user.entity';
 
 export type JwtPayload = {
   sub: number;
   email: string;
   nickname: string;
+  role: UserRole;
 };
 
 export type AuthenticatedRequest = Request & {

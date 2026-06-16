@@ -12,10 +12,13 @@ import {
     createComment,
     deletePost,
     getComments,
+    getCurrentUserRole,
     getPost,
+    reviewPostWithAi,
     updatePost,
     type Comment,
     type Post,
+    type PostAiReview,
     deleteComment
 } from "../api.ts";
 
@@ -29,6 +32,9 @@ function BoardDetailPage() {
     const [tags, setTags] = useState('');
     const [comments, setComments] = useState<Comment[]>([]);
     const [commentContent, setCommentContent] = useState('');
+    const [aiReview, setAiReview] = useState<PostAiReview | null>(null);
+    const [isReviewing, setIsReviewing] = useState(false);
+    const isManager = getCurrentUserRole() === 'MANAGER';
 
     useEffect(() => {
         async function fetchPost() {
@@ -109,6 +115,20 @@ function BoardDetailPage() {
         }
     }
 
+    async function handleAiReview() {
+        if (!id) return;
+
+        setIsReviewing(true);
+        try {
+            const result = await reviewPostWithAi(Number(id), true);
+            setAiReview(result);
+        } catch {
+            alert('AI 검토 실패. AI 서버, RAG 문서 적재, GitHub 토큰 설정을 확인하세요.');
+        } finally {
+            setIsReviewing(false);
+        }
+    }
+
     if (!post) {
         return <p>게시글을 불러오는 중입니다.</p>;
     }
@@ -143,6 +163,63 @@ function BoardDetailPage() {
 
                 <button type="button" className="writeButton" onClick={handleDelete}>삭제하기</button>
             </form>
+
+            {isManager && (
+            <section className="aiReviewPanel">
+                <div className="aiReviewHeader">
+                    <div>
+                        <h2>AI 담당자 검토</h2>
+                        <p>
+                            게시글과 댓글 대화를 바탕으로 이전 문의를 검색하고,
+                            담당자 답변 또는 GitHub Issue 등록 여부를 판단합니다.
+                        </p>
+                    </div>
+                    <button type="button" onClick={handleAiReview} disabled={isReviewing}>
+                        {isReviewing ? '검토 중' : 'AI 검토 실행'}
+                    </button>
+                </div>
+
+                {aiReview && (
+                    <div className="aiReviewGrid">
+                        <article>
+                            <h3>Agent 판단</h3>
+                            <dl>
+                                <div>
+                                    <dt>문의 유형</dt>
+                                    <dd>{aiReview.analysis.inquiryType}</dd>
+                                </div>
+                                <div>
+                                    <dt>긴급도</dt>
+                                    <dd>{aiReview.analysis.urgency}</dd>
+                                </div>
+                                <div>
+                                    <dt>추천 액션</dt>
+                                    <dd>{aiReview.analysis.suggestedAction}</dd>
+                                </div>
+                                <div>
+                                    <dt>GitHub Issue</dt>
+                                    <dd>{aiReview.githubIssueLog ? aiReview.githubIssueLog.status : '등록 안 함'}</dd>
+                                </div>
+                            </dl>
+                        </article>
+
+                        <article>
+                            <h3>RAG 참고 문의</h3>
+                            <ul>
+                                {aiReview.analysis.references.map((reference) => (
+                                    <li key={reference}>{reference}</li>
+                                ))}
+                            </ul>
+                        </article>
+
+                        <article className="aiReviewAnswer">
+                            <h3>담당자 답변 추천</h3>
+                            <p>{aiReview.recommendedAnswer}</p>
+                        </article>
+                    </div>
+                )}
+            </section>
+            )}
 
             <table className="boardTable">
                 <thead>

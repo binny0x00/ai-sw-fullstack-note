@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     openai_api_key: str
     openai_embedding_model: str = "text-embedding-3-small"
     openai_chat_model: str = "gpt-4.1-mini"
+    rag_collection_name: str = "ai_inquiry_documents"
     github_token: str | None = None
     github_project_owner: str | None = None
     github_project_title: str = "ai-inquiry"

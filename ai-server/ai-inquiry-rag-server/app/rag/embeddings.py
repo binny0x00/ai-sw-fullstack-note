@@ -1,23 +1,17 @@
-from openai import OpenAI
+from langchain_openai import OpenAIEmbeddings
 
 from app.config import settings
 
 
 class EmbeddingService:
     def __init__(self) -> None:
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.embeddings = OpenAIEmbeddings(
+            api_key=settings.openai_api_key,
+            model=settings.openai_embedding_model,
+        )
 
     def create_one(self, text: str) -> list[float]:
-        response = self.client.embeddings.create(
-            model=settings.openai_embedding_model,
-            input=text,
-        )
-        return response.data[0].embedding
+        return self.embeddings.embed_query(text)
 
     def create_many(self, texts: list[str]) -> list[list[float]]:
-        response = self.client.embeddings.create(
-            model=settings.openai_embedding_model,
-            input=texts,
-        )
-        return [item.embedding for item in response.data]
-
+        return self.embeddings.embed_documents(texts)

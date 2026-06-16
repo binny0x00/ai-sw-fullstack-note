@@ -5,10 +5,12 @@ class InquiryCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(min_length=1)
     customer_email: EmailStr | None = None
+    post_id: int | None = None
 
 
 class InquiryRead(BaseModel):
     id: int
+    post_id: int | None
     title: str
     body: str
     customer_email: str | None

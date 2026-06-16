@@ -10,6 +10,7 @@ import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { typeOrmConfig } from './config/typeorm.config';
 import { PostsModule } from './posts/posts.module';
+import { InquiriesModule } from './inquiries/inquiries.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { PostsModule } from './posts/posts.module';
       useFactory: typeOrmConfig,
     }),
     PostsModule,
+    InquiriesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

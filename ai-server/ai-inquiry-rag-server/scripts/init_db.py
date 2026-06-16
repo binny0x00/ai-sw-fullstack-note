@@ -10,7 +10,13 @@ from app.database import SessionLocal  # noqa: E402
 
 
 def main() -> None:
-    schema_path = PROJECT_ROOT / "sql" / "schema.sql"
+    schema_path = (
+        PROJECT_ROOT.parents[1]
+        / "infra"
+        / "postgres-pgvector"
+        / "init"
+        / "001_schema.sql"
+    )
     schema_sql = schema_path.read_text(encoding="utf-8")
 
     db = SessionLocal()
@@ -30,4 +36,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

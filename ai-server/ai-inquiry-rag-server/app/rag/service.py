@@ -1,17 +1,19 @@
+from langchain_core.documents import Document
 from sqlalchemy.orm import Session
 
-from app.rag.embeddings import EmbeddingService
 from app.rag.vector_store import PgVectorStore
 
 
 class RagService:
     def __init__(self, db: Session) -> None:
-        self.embedding_service = EmbeddingService()
-        self.vector_store = PgVectorStore(db)
+        self.vector_store = PgVectorStore()
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
-        query_embedding = self.embedding_service.create_one(query)
-        return self.vector_store.search(query_embedding, top_k)
+        documents = self.retrieve(query, top_k)
+        return [_document_to_search_result(document) for document in documents]
+
+    def retrieve(self, query: str, top_k: int = 5) -> list[Document]:
+        return self.vector_store.search_documents(query, top_k)
 
     def build_context(self, results: list[dict]) -> str:
         context_parts: list[str] = []
@@ -23,3 +25,16 @@ class RagService:
 
         return "\n\n".join(context_parts)
 
+    def build_context_from_documents(self, documents: list[Document]) -> str:
+        results = [_document_to_search_result(document) for document in documents]
+        return self.build_context(results)
+
+
+def _document_to_search_result(document: Document) -> dict:
+    return {
+        "content": document.page_content,
+        "source": document.metadata["source"],
+        "title": document.metadata["title"],
+        "category": document.metadata["category"],
+        "distance": document.metadata.get("distance", 0.0),
+    }

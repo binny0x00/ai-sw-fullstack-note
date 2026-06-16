@@ -1,5 +1,11 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+export type UserRole = 'USER' | 'MANAGER';
+
+export function getCurrentUserRole(): UserRole {
+    return (localStorage.getItem('userRole') as UserRole | null) ?? 'USER';
+}
+
 function getAuthHeader(): Record<string, string> {
     const token = localStorage.getItem('accessToken');
 
@@ -25,6 +31,7 @@ export async function login(email: string, password: string) {
 
     const data = await response.json();
     localStorage.setItem('accessToken', data.accessToken);
+    localStorage.setItem('userRole', data.user.role);
 
     return data;
 }
@@ -209,5 +216,71 @@ export async function deleteComment(id: number) {
     if (!response.ok) {
         throw new Error('댓글 삭제 실패');
     }
+    return response.json();
+}
+
+export type Inquiry = {
+    id: number;
+    title: string;
+    body: string;
+    customerEmail?: string;
+    status: string;
+    inquiryType?: string;
+    urgency?: string;
+    aiSummary?: string;
+    suggestedAction?: string;
+    createdAt: string;
+    updatedAt: string;
+    analysisResults?: AiAnalysisResult[];
+    mcpExecutionLogs?: McpExecutionLog[];
+};
+
+export type AiAnalysisResult = {
+    id: number;
+    inquiryId: number;
+    inquiryType: string;
+    urgency: string;
+    answerDraft: string;
+    suggestedAction: string;
+    references: string[];
+    createdAt: string;
+};
+
+export type McpExecutionLog = {
+    id: number;
+    inquiryId: number;
+    toolName: string;
+    status: string;
+    requestPayload: Record<string, unknown>;
+    responsePayload: Record<string, unknown>;
+    createdAt: string;
+};
+
+export type PostAiReview = {
+    inquiry: Inquiry;
+    analysis: AiAnalysisResult;
+    githubIssueLog: McpExecutionLog | null;
+    recommendedAnswer: string;
+    shouldCreateIssue: boolean;
+};
+
+export async function reviewPostWithAi(
+    postId: number,
+    autoCreateIssue = true,
+    repository = 'binny0x00/ai-sw-fullstack-note',
+): Promise<PostAiReview> {
+    const response = await fetch(`${API_BASE_URL}/posts/${postId}/ai-review`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            ...getAuthHeader(),
+        },
+        body: JSON.stringify({autoCreateIssue, repository}),
+    });
+
+    if (!response.ok) {
+        throw new Error('게시글 AI 검토 실패');
+    }
+
     return response.json();
 }

@@ -17,6 +17,8 @@ import {PostQueryDto} from "./dto/post-query.dto";
 import {CreateCommentDto} from './dto/create-comment.dto';
 import {JwtAuthGuard} from '../auth/jwt-auth.guard';
 import type {AuthenticatedRequest} from '../auth/jwt-auth.guard';
+import {AiReviewPostDto} from './dto/ai-review-post.dto';
+import {ManagerGuard} from '../auth/manager.guard';
 
 @Controller('posts')
 export class PostsController {
@@ -52,6 +54,12 @@ export class PostsController {
     @Get(':id')
     findOne(@Param('id') id: string) {
         return this.postsService.findOne(+id);
+    }
+
+    @Post(':id/ai-review')
+    @UseGuards(JwtAuthGuard, ManagerGuard)
+    reviewWithAi(@Param('id') id: string, @Body() aiReviewPostDto: AiReviewPostDto) {
+        return this.postsService.reviewWithAi(+id, aiReviewPostDto);
     }
 
     @Patch(':id')

@@ -12,8 +12,8 @@ class InquiryService:
         row = self.db.execute(
             text(
                 """
-                INSERT INTO inquiries (title, body, customer_email)
-                VALUES (:title, :body, :customer_email)
+                INSERT INTO inquiries (title, body, customer_email, post_id)
+                VALUES (:title, :body, :customer_email, :post_id)
                 RETURNING *
                 """
             ),
@@ -71,4 +71,3 @@ class InquiryService:
             },
         )
         self.db.commit()
-

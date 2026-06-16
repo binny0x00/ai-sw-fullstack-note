@@ -31,3 +31,63 @@
     flex-direction: column;
     gap: 8px;
 }
+
+.aiReviewPanel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 24px 0;
+    padding: 20px;
+    text-align: left;
+}
+
+.aiReviewHeader {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.aiReviewHeader p {
+    color: var(--text);
+    margin-top: 4px;
+}
+
+.aiReviewGrid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 18px;
+}
+
+.aiReviewGrid article {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.aiReviewGrid dl {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+}
+
+.aiReviewGrid dt {
+    color: var(--text);
+    font-size: 13px;
+}
+
+.aiReviewGrid dd {
+    color: var(--text-h);
+    font-weight: 700;
+    margin: 0;
+}
+
+.aiReviewAnswer {
+    grid-column: 1 / -1;
+}
+
+.aiReviewAnswer p {
+    color: var(--text-h);
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
