@@ -1,0 +1,63 @@
+.docEditorPage {
+    padding: 0 24px 40px;
+    text-align: left;
+}
+
+.docEditorHeader {
+    align-items: flex-start;
+    display: flex;
+    gap: 16px;
+    justify-content: space-between;
+}
+
+.docEditorHeader p {
+    color: var(--text);
+}
+
+.docRecommendationPanel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: grid;
+    gap: 12px;
+    margin: 20px 0;
+    padding: 16px;
+}
+
+.docRecommendationPanel h2 {
+    margin: 0;
+}
+
+.docRecommendationPanel article {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 8px;
+    padding-top: 12px;
+}
+
+.docRecommendationPanel p {
+    margin: 0;
+}
+
+.docEditorPanel {
+    display: grid;
+    gap: 12px;
+}
+
+.docEditorPanel textarea {
+    box-sizing: border-box;
+    font: 14px/1.6 var(--mono, monospace);
+    min-height: 560px;
+    resize: vertical;
+    width: 100%;
+}
+
+.docEditorActions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+    .docEditorHeader {
+        flex-direction: column;
+    }
+}

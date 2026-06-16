@@ -66,6 +66,27 @@ export class InquiriesService {
     return inquiry;
   }
 
+  async findLatestByPostId(postId: number) {
+    const inquiry = await this.inquiryRepository.findOne({
+      where: { postId },
+      relations: {
+        analysisResults: true,
+        mcpExecutionLogs: true,
+      },
+      order: {
+        createdAt: 'DESC',
+        analysisResults: {
+          createdAt: 'DESC',
+        },
+        mcpExecutionLogs: {
+          createdAt: 'DESC',
+        },
+      },
+    });
+
+    return inquiry;
+  }
+
   async analyze(id: number) {
     const inquiry = await this.findOne(id);
 
@@ -104,5 +125,56 @@ export class InquiriesService {
     }
 
     return log;
+  }
+
+  getAiSettings() {
+    return this.aiServerClient.getAiSettings();
+  }
+
+  getRagStatus() {
+    return this.aiServerClient.getRagStatus();
+  }
+
+  indexPostForRag(post: {
+    id: number;
+    title: string;
+    content: string;
+    author?: string;
+    tags: string[];
+  }) {
+    return this.aiServerClient.indexPostForRag(post);
+  }
+
+  deletePostFromRag(postId: number) {
+    return this.aiServerClient.deletePostFromRag(postId);
+  }
+
+  precheckPost(post: { title: string; content: string; tagNames: string[] }) {
+    return this.aiServerClient.precheckPost(post);
+  }
+
+  getObservabilitySummary() {
+    return this.aiServerClient.getObservabilitySummary();
+  }
+
+  applyDocRecommendation(recommendation: { file: string; suggestion: string }) {
+    return this.aiServerClient.applyDocRecommendation(recommendation);
+  }
+
+  getMarkdownDoc(fileName: string) {
+    return this.aiServerClient.getMarkdownDoc(fileName);
+  }
+
+  updateMarkdownDoc(fileName: string, content: string) {
+    return this.aiServerClient.updateMarkdownDoc(fileName, content);
+  }
+
+  updateAiSettings(aiSettings: {
+    answerTone: string;
+    technicalIssuePolicy: string;
+    escalationPolicy: string;
+    customInstructions: string;
+  }) {
+    return this.aiServerClient.updateAiSettings(aiSettings);
   }
 }

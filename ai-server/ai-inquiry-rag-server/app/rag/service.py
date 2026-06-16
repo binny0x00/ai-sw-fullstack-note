@@ -1,12 +1,14 @@
 from langchain_core.documents import Document
 from sqlalchemy.orm import Session
 
+from app.rag.loader import load_markdown_document
+from app.rag.splitter import split_text
 from app.rag.vector_store import PgVectorStore
 
 
 class RagService:
     def __init__(self, db: Session) -> None:
-        self.vector_store = PgVectorStore()
+        self.vector_store = PgVectorStore(db)
 
     def search(self, query: str, top_k: int = 5) -> list[dict]:
         documents = self.retrieve(query, top_k)
@@ -28,6 +30,85 @@ class RagService:
     def build_context_from_documents(self, documents: list[Document]) -> str:
         results = [_document_to_search_result(document) for document in documents]
         return self.build_context(results)
+
+    def get_status(self) -> dict:
+        return self.vector_store.get_status()
+
+    def index_markdown_file(self, file_path: str) -> dict:
+        raw_document = load_markdown_document(file_path)
+        source = raw_document["source"]
+        chunks = split_text(raw_document["content"])
+        documents = [
+            Document(
+                page_content=chunk,
+                metadata={
+                    "source": source,
+                    "title": raw_document["title"],
+                    "category": raw_document["category"],
+                    "chunk_index": index,
+                },
+            )
+            for index, chunk in enumerate(chunks)
+        ]
+        ids = [f"{source}:{index}" for index in range(len(documents))]
+
+        self.vector_store.delete_by_source(source)
+
+        if documents:
+            self.vector_store.upsert_documents(documents, ids)
+
+        return {
+            "source": source,
+            "chunk_count": len(documents),
+            "indexed": bool(documents),
+        }
+
+    def index_post(self, post: dict) -> dict:
+        source = f"post:{post['id']}"
+        tag_text = " ".join([f"#{tag}" for tag in post.get("tags", [])])
+        content = "\n\n".join(
+            [
+                f"# {post['title']}",
+                f"작성자: {post.get('author') or 'unknown'}",
+                f"태그: {tag_text or '없음'}",
+                post["content"],
+            ]
+        )
+        chunks = split_text(content)
+        documents = [
+            Document(
+                page_content=chunk,
+                metadata={
+                    "source": source,
+                    "title": post["title"],
+                    "category": "post",
+                    "post_id": post["id"],
+                    "chunk_index": index,
+                },
+            )
+            for index, chunk in enumerate(chunks)
+        ]
+        ids = [f"{source}:{index}" for index in range(len(documents))]
+
+        self.vector_store.delete_by_source(source)
+
+        if documents:
+            self.vector_store.upsert_documents(documents, ids)
+
+        return {
+            "source": source,
+            "chunk_count": len(documents),
+            "indexed": bool(documents),
+        }
+
+    def delete_post(self, post_id: int) -> dict:
+        source = f"post:{post_id}"
+        self.vector_store.delete_by_source(source)
+
+        return {
+            "source": source,
+            "deleted": True,
+        }
 
 
 def _document_to_search_result(document: Document) -> dict:

@@ -7,28 +7,49 @@
 import './css/Board.css'
 import {Link, useNavigate} from "react-router-dom";
 import {useState} from "react";
-import {createPost} from '../api';
+import {createPost, precheckPost, type PostPrecheckResult} from '../api';
 
 function BoardWritePage() {
     const navigate = useNavigate();
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');
     const [tags, setTags] = useState('');
+    const [precheckResult, setPrecheckResult] = useState<PostPrecheckResult | null>(null);
+    const [isChecking, setIsChecking] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const tagNames = parseTagNames(tags);
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault();
 
         try {
-            const tagNames = tags
-                .split(',')
-                .map((tag) => tag.trim())
-                .filter(Boolean);
+            setIsChecking(true);
+            const result = await precheckPost(title, content, tagNames);
+            setPrecheckResult(result);
 
+            if (result.needsMoreInfo) {
+                return;
+            }
+
+            await submitPost();
+        } catch {
+            alert('게시글 AI 점검 또는 작성에 실패했습니다.');
+        } finally {
+            setIsChecking(false);
+        }
+    }
+
+    async function submitPost() {
+        try {
+            setIsSubmitting(true);
             await createPost(title, content, tagNames);
             alert('게시글 작성 성공');
             navigate('/board');
         } catch {
             alert('게시글 작성 실패');
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
@@ -62,15 +83,60 @@ function BoardWritePage() {
                     <input
                         type="text"
                         value={tags}
-                        placeholder={"react, nestjs 처럼 쉼표로 구분"}
+                        placeholder={"문의, 오류, 개선 처럼 쉼표로 구분"}
                         onChange={(e) => setTags(e.target.value)}
                     />
                 </label>
 
-                <button type="submit" className={"writeButton"}>제출하기</button>
+                {precheckResult ? (
+                    <section className="postPrecheckPanel" aria-live="polite">
+                        <div>
+                            <strong>
+                                {precheckResult.needsMoreInfo
+                                    ? 'AI가 추가 정보를 요청합니다.'
+                                    : 'AI 점검을 통과했습니다.'}
+                            </strong>
+                            <p>{precheckResult.reason}</p>
+                        </div>
+
+                        {precheckResult.questions.length > 0 ? (
+                            <ol>
+                                {precheckResult.questions.map((question) => (
+                                    <li key={question}>{question}</li>
+                                ))}
+                            </ol>
+                        ) : null}
+
+                        <div className="boardActionRow">
+                            <button
+                                type="button"
+                                className="writeButton"
+                                disabled={isSubmitting}
+                                onClick={submitPost}
+                            >
+                                그래도 등록하기
+                            </button>
+                        </div>
+                    </section>
+                ) : null}
+
+                <button
+                    type="submit"
+                    className={"writeButton"}
+                    disabled={isChecking || isSubmitting}
+                >
+                    {isChecking ? 'AI 점검 중...' : 'AI 점검 후 등록'}
+                </button>
             </form>
         </>
     );
+}
+
+function parseTagNames(tags: string) {
+    return tags
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
 }
 
 export default BoardWritePage;

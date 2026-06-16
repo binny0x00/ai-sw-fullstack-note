@@ -53,7 +53,6 @@ function BoardPage() {
                 </form>
                 <Link to="/board/write" className="writeButton">글쓰기</Link>
             </div>
-            {/*todo : 태그*/}
 
             <table className="boardTable">
                 <thead>

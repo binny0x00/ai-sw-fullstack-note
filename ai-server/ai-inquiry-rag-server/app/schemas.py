@@ -39,6 +39,42 @@ class RagSearchResponse(BaseModel):
     results: list[RagSearchResult]
 
 
+class RagStatusResponse(BaseModel):
+    collection_name: str
+    document_count: int
+    embedding_count: int
+    ready: bool
+
+
+class RagPostIndexRequest(BaseModel):
+    id: int
+    title: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+    author: str | None = None
+    tags: list[str] = []
+
+
+class RagPostIndexResponse(BaseModel):
+    source: str
+    chunk_count: int
+    indexed: bool
+
+
+class PostPrecheckRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    content: str = Field(min_length=1)
+    tag_names: list[str] = []
+
+
+class PostPrecheckResponse(BaseModel):
+    needs_more_info: bool
+    questions: list[str]
+    suggested_content: str | None = None
+    reason: str
+    category: str | None = None
+    references: list[str]
+
+
 class AnalysisResponse(BaseModel):
     inquiry_id: int
     inquiry_type: str
@@ -50,7 +86,58 @@ class AnalysisResponse(BaseModel):
 
 class GitHubIssueApprovalRequest(BaseModel):
     approved: bool
+    action: str = Field(default="create", pattern="^(create|comment)$")
+    issue_number: int | None = Field(default=None, ge=1)
     repository: str = Field(
         default="binny0x00/ai-sw-fullstack-note",
         description="GitHub repository in owner/name format.",
     )
+
+
+class AiSettingsRead(BaseModel):
+    answer_tone: str
+    technical_issue_policy: str
+    escalation_policy: str
+    custom_instructions: str
+
+
+class AiSettingsUpdate(BaseModel):
+    answer_tone: str = Field(min_length=1)
+    technical_issue_policy: str = Field(min_length=1)
+    escalation_policy: str = Field(min_length=1)
+    custom_instructions: str = ""
+
+
+class DocRecommendationApplyRequest(BaseModel):
+    file: str = Field(min_length=1)
+    suggestion: str = Field(min_length=1)
+
+
+class DocRecommendationApplyResponse(BaseModel):
+    file: str
+    applied: bool
+    appended_text: str
+    index_result: dict | None = None
+
+
+class MarkdownDocRead(BaseModel):
+    file: str
+    content: str
+
+
+class MarkdownDocUpdate(BaseModel):
+    content: str
+
+
+class MarkdownDocUpdateResponse(BaseModel):
+    file: str
+    content: str
+    updated: bool
+    index_result: dict | None = None
+
+
+class ObservabilitySummary(BaseModel):
+    api: dict
+    agent: dict
+    mcp: dict
+    recent_steps: list[dict]

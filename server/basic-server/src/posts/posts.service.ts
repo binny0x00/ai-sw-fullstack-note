@@ -1,4 +1,4 @@
-import {Injectable} from '@nestjs/common';
+import {ForbiddenException, Injectable} from '@nestjs/common';
 import {InjectRepository} from '@nestjs/typeorm';
 import {ILike, In, Repository} from 'typeorm';
 import {CreatePostDto} from './dto/create-post.dto';
@@ -10,6 +10,11 @@ import {CreateCommentDto} from './dto/create-comment.dto';
 import {Tag} from './entities/tag.entity';
 import {InquiriesService} from '../inquiries/inquiries.service';
 import {AiReviewPostDto} from './dto/ai-review-post.dto';
+import {AiPrecheckPostDto} from './dto/ai-precheck-post.dto';
+import {UserRole} from '../auth/entities/user.entity';
+import type {JwtPayload} from '../auth/jwt-auth.guard';
+import {Inquiry} from '../inquiries/entities/inquiry.entity';
+import {AiAnalysisResult} from '../inquiries/entities/ai-analysis-result.entity';
 
 @Injectable()
 export class PostsService {
@@ -35,11 +40,20 @@ export class PostsService {
         });
 
         const savedPost = await this.postRepository.save(post);
+        await this.syncPostEmbedding(savedPost.id);
 
         return {
             success: true,
             post: savedPost,
         };
+    }
+
+    precheckWithAi(aiPrecheckPostDto: AiPrecheckPostDto) {
+        return this.inquiriesService.precheckPost({
+            title: aiPrecheckPostDto.title,
+            content: aiPrecheckPostDto.content,
+            tagNames: aiPrecheckPostDto.tagNames ?? [],
+        });
     }
 
     async findAll(query: PostQueryDto) {
@@ -89,7 +103,7 @@ export class PostsService {
         });
     }
 
-    async update(id: number, updatePostDto: UpdatePostDto) {
+    async update(id: number, updatePostDto: UpdatePostDto, actor: JwtPayload) {
         const post = await this.postRepository.findOne({
             where: {id},
             relations: {
@@ -101,6 +115,8 @@ export class PostsService {
             return null;
         }
 
+        this.assertCanManage(post.userId, actor);
+
         if (updatePostDto.title !== undefined) {
             post.title = updatePostDto.title;
         }
@@ -109,7 +125,7 @@ export class PostsService {
             post.content = updatePostDto.content;
         }
 
-        if (updatePostDto.userId !== undefined) {
+        if (updatePostDto.userId !== undefined && actor.role === UserRole.MANAGER) {
             post.userId = updatePostDto.userId;
         }
 
@@ -118,6 +134,7 @@ export class PostsService {
         }
 
         const savedPost = await this.postRepository.save(post);
+        await this.syncPostEmbedding(savedPost.id);
 
         return {
             success: true,
@@ -125,7 +142,16 @@ export class PostsService {
         };
     }
 
-    remove(id: number) {
+    async remove(id: number, actor: JwtPayload) {
+        const post = await this.postRepository.findOneBy({id});
+
+        if (!post) {
+            return null;
+        }
+
+        this.assertCanManage(post.userId, actor);
+        await this.deletePostEmbedding(id);
+
         return this.postRepository.delete(id);
     }
 
@@ -156,7 +182,15 @@ export class PostsService {
         };
     }
 
-    removeComment(commentId: number) {
+    async removeComment(commentId: number, actor: JwtPayload) {
+        const comment = await this.commentRepository.findOneBy({id: commentId});
+
+        if (!comment) {
+            return null;
+        }
+
+        this.assertCanManage(comment.userId, actor);
+
         return this.commentRepository.delete(commentId);
     }
 
@@ -181,23 +215,45 @@ export class PostsService {
             postId: post.id,
         });
         const analysis = await this.inquiriesService.analyze(inquiry.id);
-        const shouldCreateIssue =
-            aiReviewPostDto.autoCreateIssue !== false
-            && analysis.suggestedAction === 'github_issue_recommended';
-        const githubIssueLog = shouldCreateIssue
-            ? await this.inquiriesService.approveGithubIssue(inquiry.id, {
-                approved: true,
-                repository: aiReviewPostDto.repository,
-            })
-            : null;
+        const analyzedInquiry = await this.inquiriesService.findOne(inquiry.id);
 
-        return {
-            inquiry,
+        return this.buildAiReviewResponse(
+            post,
+            comments.length,
+            analyzedInquiry,
             analysis,
-            githubIssueLog,
-            recommendedAnswer: analysis.answerDraft,
-            shouldCreateIssue,
-        };
+            aiReviewPostDto.repository,
+        );
+    }
+
+    async findLatestAiReview(id: number) {
+        const post = await this.postRepository.findOne({
+            where: {id},
+            relations: {
+                user: true,
+                tags: true,
+            },
+        });
+
+        if (!post) {
+            return null;
+        }
+
+        const inquiry = await this.inquiriesService.findLatestByPostId(id);
+
+        if (!inquiry || !inquiry.analysisResults?.length) {
+            return null;
+        }
+
+        const comments = await this.findComments(id);
+        const latestAnalysis = inquiry.analysisResults[0];
+
+        return this.buildAiReviewResponse(
+            post,
+            comments.length,
+            inquiry,
+            latestAnalysis,
+        );
     }
 
     private normalizeTagNames(tagNames?: string[]) {
@@ -208,6 +264,111 @@ export class PostsService {
                     .filter(Boolean),
             ),
         ];
+    }
+
+    private buildAiReviewResponse(
+        post: Post,
+        commentCount: number,
+        inquiry: Inquiry,
+        analysis: AiAnalysisResult,
+        repository?: string,
+    ) {
+        const shouldCreateIssue = analysis.suggestedAction === 'github_issue_recommended';
+        const mcpSearchLogs = inquiry.mcpExecutionLogs?.filter(
+            (log) => log.toolName === 'github_issue_search',
+        ) ?? [];
+        const githubIssueLog = inquiry.mcpExecutionLogs?.find(
+            (log) => (
+                ['github_issue', 'github_issue_comment'].includes(log.toolName)
+                && log.status !== 'skipped'
+            ),
+        ) ?? null;
+        const {sources, docRecommendations} = this.normalizeAnalysisReferences(
+            analysis.references,
+        );
+
+        return {
+            inquiry,
+            analysis: {
+                ...analysis,
+                references: sources,
+            },
+            githubIssueLog,
+            mcpSearchLogs,
+            docRecommendations,
+            recommendedAnswer: analysis.answerDraft,
+            shouldCreateIssue,
+            repository,
+            sourcePost: {
+                id: post.id,
+                title: post.title,
+                content: post.content,
+                author: post.user?.nickname ?? `user-${post.userId}`,
+                tags: post.tags?.map((tag) => tag.name) ?? [],
+                commentCount,
+            },
+        };
+    }
+
+    private normalizeAnalysisReferences(references: unknown) {
+        if (Array.isArray(references)) {
+            return {
+                sources: references.map(String),
+                docRecommendations: [],
+            };
+        }
+
+        if (references && typeof references === 'object') {
+            const payload = references as {
+                sources?: unknown;
+                doc_recommendations?: unknown;
+                docRecommendations?: unknown;
+            };
+            const rawSources = Array.isArray(payload.sources) ? payload.sources : [];
+            const rawRecommendations = Array.isArray(payload.doc_recommendations)
+                ? payload.doc_recommendations
+                : Array.isArray(payload.docRecommendations) ? payload.docRecommendations : [];
+
+            return {
+                sources: rawSources.map(String),
+                docRecommendations: rawRecommendations
+                    .map((recommendation) => this.normalizeDocRecommendation(recommendation))
+                    .filter((recommendation) => (
+                        recommendation.file && recommendation.suggestion
+                    )),
+            };
+        }
+
+        return {
+            sources: [],
+            docRecommendations: [],
+        };
+    }
+
+    private normalizeDocRecommendation(recommendation: unknown) {
+        if (recommendation && typeof recommendation === 'object') {
+            const payload = recommendation as {
+                file?: unknown;
+                suggestion?: unknown;
+            };
+
+            return {
+                file: this.isMarkdownFileName(payload.file) ? payload.file : '',
+                suggestion:
+                    typeof payload.suggestion === 'string'
+                        ? payload.suggestion
+                        : '',
+            };
+        }
+
+        return {
+            file: '',
+            suggestion: typeof recommendation === 'string' ? recommendation : '',
+        };
+    }
+
+    private isMarkdownFileName(fileName: unknown): fileName is string {
+        return typeof fileName === 'string' && /^[^/\\]+\.md$/.test(fileName);
     }
 
     private async findOrCreateTags(tagNames?: string[]) {
@@ -231,6 +392,14 @@ export class PostsService {
             : [];
 
         return [...existingTags, ...savedNewTags];
+    }
+
+    private assertCanManage(ownerId: number, actor: JwtPayload) {
+        if (actor.role === UserRole.MANAGER || ownerId === actor.sub) {
+            return;
+        }
+
+        throw new ForbiddenException('수정 또는 삭제 권한이 없습니다.');
     }
 
     private buildPostInquiryBody(post: Post, comments: Comment[]) {
@@ -262,5 +431,39 @@ export class PostsService {
             '- 실제 버그나 개발 조치가 필요하면 GitHub Issue 생성을 권장합니다.',
             '- 단순 사용 문의면 담당자가 댓글로 답변할 수 있도록 안내합니다.',
         ].join('\n');
+    }
+
+    private async syncPostEmbedding(postId: number) {
+        const post = await this.postRepository.findOne({
+            where: {id: postId},
+            relations: {
+                user: true,
+                tags: true,
+            },
+        });
+
+        if (!post) {
+            return;
+        }
+
+        try {
+            await this.inquiriesService.indexPostForRag({
+                id: post.id,
+                title: post.title,
+                content: post.content,
+                author: post.user?.nickname ?? `user-${post.userId}`,
+                tags: post.tags?.map((tag) => tag.name) ?? [],
+            });
+        } catch {
+            // RAG sync is best-effort and must not block board CRUD.
+        }
+    }
+
+    private async deletePostEmbedding(postId: number) {
+        try {
+            await this.inquiriesService.deletePostFromRag(postId);
+        } catch {
+            // RAG sync is best-effort and must not block board CRUD.
+        }
     }
 }

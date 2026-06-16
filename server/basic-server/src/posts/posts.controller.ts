@@ -18,6 +18,7 @@ import {CreateCommentDto} from './dto/create-comment.dto';
 import {JwtAuthGuard} from '../auth/jwt-auth.guard';
 import type {AuthenticatedRequest} from '../auth/jwt-auth.guard';
 import {AiReviewPostDto} from './dto/ai-review-post.dto';
+import {AiPrecheckPostDto} from './dto/ai-precheck-post.dto';
 import {ManagerGuard} from '../auth/manager.guard';
 
 @Controller('posts')
@@ -31,6 +32,12 @@ export class PostsController {
         return this.postsService.create(createPostDto, request.user.sub);
     }
 
+    @Post('ai-precheck')
+    @UseGuards(JwtAuthGuard)
+    precheckWithAi(@Body() aiPrecheckPostDto: AiPrecheckPostDto) {
+        return this.postsService.precheckWithAi(aiPrecheckPostDto);
+    }
+
     @Get()
     findAll(@Query() query: PostQueryDto) {
         return this.postsService.findAll(query);
@@ -39,6 +46,12 @@ export class PostsController {
     @Get(':postId/comments')
     findComments(@Param('postId') postId: string) {
         return this.postsService.findComments(+postId);
+    }
+
+    @Get(':id/ai-review/latest')
+    @UseGuards(JwtAuthGuard, ManagerGuard)
+    findLatestAiReview(@Param('id') id: string) {
+        return this.postsService.findLatestAiReview(+id);
     }
 
     @Post(':postId/comments')
@@ -64,19 +77,26 @@ export class PostsController {
 
     @Patch(':id')
     @UseGuards(JwtAuthGuard)
-    update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
-        return this.postsService.update(+id, updatePostDto);
+    update(
+        @Param('id') id: string,
+        @Body() updatePostDto: UpdatePostDto,
+        @Req() request: AuthenticatedRequest,
+    ) {
+        return this.postsService.update(+id, updatePostDto, request.user);
     }
 
     @Delete(':id')
     @UseGuards(JwtAuthGuard)
-    remove(@Param('id') id: string) {
-        return this.postsService.remove(+id);
+    remove(@Param('id') id: string, @Req() request: AuthenticatedRequest) {
+        return this.postsService.remove(+id, request.user);
     }
 
     @Delete('comments/:commentId')
     @UseGuards(JwtAuthGuard)
-    removeComment(@Param('commentId') commentId: string) {
-        return this.postsService.removeComment(+commentId);
+    removeComment(
+        @Param('commentId') commentId: string,
+        @Req() request: AuthenticatedRequest,
+    ) {
+        return this.postsService.removeComment(+commentId, request.user);
     }
 }

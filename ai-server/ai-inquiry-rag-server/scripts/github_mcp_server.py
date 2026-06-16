@@ -7,6 +7,7 @@ from mcp.server.fastmcp import FastMCP
 
 
 GITHUB_ISSUES_API_BASE_URL = "https://api.github.com/repos"
+GITHUB_SEARCH_API_URL = "https://api.github.com/search/issues"
 GITHUB_GRAPHQL_API_URL = "https://api.github.com/graphql"
 
 mcp = FastMCP("github-issue-project-server")
@@ -54,6 +55,107 @@ def create_github_issue_with_project(
         issue_result["status"] = "project_failed"
 
     return json.dumps(issue_result, ensure_ascii=False)
+
+
+@mcp.tool()
+def search_github_issues(
+    repository: str,
+    query: str,
+    state: str = "all",
+    limit: int = 5,
+) -> str:
+    """Search GitHub issues in a repository and return compact issue state."""
+    github_token = _get_github_token()
+
+    if github_token == "":
+        return json.dumps(
+            {
+                "status": "failed",
+                "message": "GITHUB_TOKEN is required.",
+                "issues": [],
+            },
+            ensure_ascii=False,
+        )
+
+    safe_limit = min(max(limit, 1), 10)
+    search_query = f"repo:{repository} is:issue {query}".strip()
+
+    if state in ("open", "closed"):
+        search_query = f"{search_query} state:{state}"
+
+    try:
+        response = httpx.get(
+            GITHUB_SEARCH_API_URL,
+            headers=_github_headers(github_token),
+            params={
+                "q": search_query,
+                "per_page": safe_limit,
+            },
+            timeout=10.0,
+        )
+    except httpx.HTTPError as exc:
+        return json.dumps(
+            {
+                "status": "failed",
+                "message": "GitHub Issue search request failed.",
+                "error": str(exc),
+                "issues": [],
+            },
+            ensure_ascii=False,
+        )
+
+    payload = _read_json_response(response)
+
+    if not response.is_success:
+        return json.dumps(
+            {
+                "status": "failed",
+                "message": "GitHub Issue search failed.",
+                "status_code": response.status_code,
+                "github_response": payload,
+                "issues": [],
+            },
+            ensure_ascii=False,
+        )
+
+    issues = [
+        {
+            "number": item.get("number"),
+            "title": item.get("title"),
+            "state": item.get("state"),
+            "url": item.get("html_url"),
+            "updated_at": item.get("updated_at"),
+        }
+        for item in payload.get("items", [])[:safe_limit]
+    ]
+
+    return json.dumps(
+        {
+            "status": "ok",
+            "query": search_query,
+            "total_count": payload.get("total_count", 0),
+            "issues": issues,
+        },
+        ensure_ascii=False,
+    )
+
+
+@mcp.tool()
+def add_comment_to_github_issue(
+    repository: str,
+    issue_number: int,
+    body: str,
+) -> str:
+    """Add a comment to an existing GitHub issue."""
+    github_token = _get_github_token()
+    result = _add_issue_comment(
+        github_token=github_token,
+        repository=repository,
+        issue_number=issue_number,
+        body=body,
+    )
+
+    return json.dumps(result, ensure_ascii=False)
 
 
 def _get_github_token() -> str:
@@ -109,6 +211,52 @@ def _create_github_issue(
         "issue_node_id": payload.get("node_id"),
         "issue_url": payload.get("html_url"),
         "api_url": payload.get("url"),
+    }
+
+
+def _add_issue_comment(
+    github_token: str,
+    repository: str,
+    issue_number: int,
+    body: str,
+) -> dict:
+    if github_token == "":
+        return {
+            "status": "failed",
+            "message": "GITHUB_TOKEN is required.",
+        }
+
+    try:
+        response = httpx.post(
+            f"{GITHUB_ISSUES_API_BASE_URL}/{repository}/issues/{issue_number}/comments",
+            headers=_github_headers(github_token),
+            json={"body": body},
+            timeout=10.0,
+        )
+    except httpx.HTTPError as exc:
+        return {
+            "status": "failed",
+            "message": "GitHub Issue comment request failed.",
+            "error": str(exc),
+        }
+
+    payload = _read_json_response(response)
+
+    if not response.is_success:
+        return {
+            "status": "failed",
+            "message": "GitHub Issue comment failed.",
+            "status_code": response.status_code,
+            "github_response": payload,
+        }
+
+    return {
+        "status": "commented",
+        "message": "Comment was added to the existing GitHub Issue.",
+        "issue_number": issue_number,
+        "issue_url": f"https://github.com/{repository}/issues/{issue_number}",
+        "comment_url": payload.get("html_url"),
+        "comment_id": payload.get("id"),
     }
 
 

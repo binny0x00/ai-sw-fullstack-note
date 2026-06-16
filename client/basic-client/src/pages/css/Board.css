@@ -15,6 +15,11 @@
     padding: 6px 12px;
 }
 
+.boardActionRow {
+    display: flex;
+    gap: 8px;
+}
+
 .boardSearchForm {
     display: flex;
     gap: 8px;
@@ -30,6 +35,36 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+}
+
+.boardTitle textarea {
+    min-height: 220px;
+    resize: vertical;
+}
+
+.postPrecheckPanel {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    text-align: left;
+}
+
+.postPrecheckPanel p {
+    color: var(--text);
+    margin: 6px 0 0;
+}
+
+.postPrecheckPanel ol {
+    color: var(--text-h);
+    line-height: 1.7;
+    margin: 0;
+    padding-left: 22px;
+}
+
+.postPrecheckReferences {
+    font-size: 13px;
 }
 
 .aiReviewPanel {
@@ -65,6 +100,26 @@
     padding: 16px;
 }
 
+.aiReviewSource {
+    background: color-mix(
+        in srgb,
+        var(--background, #ffffff) 92%,
+        var(--text-h, #111827)
+    );
+    grid-column: 1 / -1;
+}
+
+.aiReviewSource p {
+    border-top: 1px solid var(--border);
+    color: var(--text-h);
+    line-height: 1.7;
+    margin: 14px 0 0;
+    max-height: 180px;
+    overflow: auto;
+    padding-top: 14px;
+    white-space: pre-wrap;
+}
+
 .aiReviewGrid dl {
     display: grid;
     gap: 10px;
@@ -82,8 +137,45 @@
     margin: 0;
 }
 
+.issueLink {
+    display: inline-flex;
+    margin: 12px 0;
+}
+
+.docRecommendationList {
+    display: grid;
+    gap: 10px;
+}
+
+.docRecommendationItem {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 8px;
+    padding-top: 10px;
+}
+
+.docRecommendationItem p {
+    margin: 0;
+}
+
+.docRecommendationItem strong {
+    display: block;
+    margin-bottom: 4px;
+}
+
 .aiReviewAnswer {
     grid-column: 1 / -1;
+}
+
+.aiReviewAnswerHeader {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.aiReviewAnswerHeader h3 {
+    margin: 0;
 }
 
 .aiReviewAnswer p {

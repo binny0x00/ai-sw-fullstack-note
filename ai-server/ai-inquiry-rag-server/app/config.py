@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     openai_chat_model: str = "gpt-4.1-mini"
     rag_collection_name: str = "ai_inquiry_documents"
     github_token: str | None = None
+    github_repository: str = "binny0x00/ai-sw-fullstack-note"
     github_project_owner: str | None = None
     github_project_title: str = "ai-inquiry"
     github_project_status_field: str = "Status"

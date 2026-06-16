@@ -1,0 +1,219 @@
+.aiAdminPage {
+    padding: 0 24px 40px;
+    text-align: left;
+}
+
+.aiAdminHeader {
+    align-items: flex-start;
+    display: flex;
+    gap: 20px;
+    justify-content: space-between;
+}
+
+.aiAdminHeader p,
+.aiAdminNotice p {
+    color: var(--text);
+    max-width: 760px;
+}
+
+.aiAdminNotice {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin: 20px 0;
+    padding: 18px;
+}
+
+.aiAdminForm {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: grid;
+    gap: 16px;
+    margin-bottom: 20px;
+    padding: 18px;
+}
+
+.aiAdminTabs {
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    margin: 20px 0;
+}
+
+.aiAdminTabs button {
+    background: transparent;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    color: var(--text);
+    padding: 10px 12px;
+}
+
+.aiAdminTabs button.active {
+    border-bottom-color: var(--text-h);
+    color: var(--text-h);
+    font-weight: 700;
+}
+
+.aiAdminForm label {
+    color: var(--text-h);
+    display: grid;
+    font-weight: 700;
+    gap: 8px;
+}
+
+.aiAdminForm textarea {
+    box-sizing: border-box;
+    font: inherit;
+    min-height: 92px;
+    resize: vertical;
+    width: 100%;
+}
+
+.aiAdminActionRow {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.aiAdminActionRow button {
+    padding: 8px 14px;
+}
+
+.aiAdminGrid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.aiAdminCard {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px;
+}
+
+.aiAdminCardHeader {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.aiAdminCardHeader h2 {
+    margin: 0;
+}
+
+.aiAdminCardHeader span {
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-h);
+    flex: 0 0 auto;
+    font-size: 13px;
+    padding: 4px 8px;
+}
+
+.aiAdminCard ul {
+    margin: 14px 0 0;
+    padding-left: 20px;
+}
+
+.aiAdminCard li {
+    margin: 8px 0;
+}
+
+.aiAdminCard p {
+    margin: 14px 0;
+}
+
+.ragStatusList {
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 10px;
+    margin: 14px 0 0;
+    padding-top: 14px;
+}
+
+.ragStatusList div {
+    align-items: center;
+    display: flex;
+    gap: 12px;
+    justify-content: space-between;
+}
+
+.ragStatusList dt {
+    color: var(--text);
+}
+
+.ragStatusList dd {
+    color: var(--text-h);
+    font-weight: 700;
+    margin: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+}
+
+.aiAdminCard code {
+    display: flex;
+    margin-top: 8px;
+    overflow-wrap: anywhere;
+}
+
+.aiAdminRunbook {
+    border-top: 1px solid var(--border);
+    margin-top: 24px;
+    padding-top: 20px;
+}
+
+.aiAdminRunbook dl {
+    display: grid;
+    gap: 12px;
+}
+
+.aiAdminRunbook div {
+    display: grid;
+    gap: 4px;
+}
+
+.aiAdminRunbook dt {
+    color: var(--text-h);
+    font-weight: 700;
+}
+
+.aiAdminRunbook dd {
+    font-family: var(--mono);
+    font-size: 14px;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.agentStepList {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+
+.agentStepList article {
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: grid;
+    gap: 8px;
+    grid-template-columns: 1fr auto auto;
+    padding: 10px 12px;
+}
+
+.agentStepList strong,
+.agentStepList span,
+.agentStepList small {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+    .aiAdminHeader,
+    .aiAdminCardHeader {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .aiAdminGrid {
+        grid-template-columns: 1fr;
+    }
+}

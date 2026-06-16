@@ -5,19 +5,22 @@ def load_markdown_documents(docs_dir: str = "docs") -> list[dict[str, str]]:
     documents: list[dict[str, str]] = []
 
     for path in sorted(Path(docs_dir).glob("*.md")):
-        content = path.read_text(encoding="utf-8")
-        title = _extract_title(content, fallback=path.stem)
-
-        documents.append(
-            {
-                "source": path.name,
-                "title": title,
-                "category": _guess_category(path.name),
-                "content": content,
-            }
-        )
+        documents.append(load_markdown_document(str(path)))
 
     return documents
+
+
+def load_markdown_document(file_path: str) -> dict[str, str]:
+    path = Path(file_path)
+    content = path.read_text(encoding="utf-8")
+    title = _extract_title(content, fallback=path.stem)
+
+    return {
+        "source": path.name,
+        "title": title,
+        "category": _guess_category(path.name),
+        "content": content,
+    }
 
 
 def _extract_title(content: str, fallback: str) -> str:
@@ -37,4 +40,3 @@ def _guess_category(file_name: str) -> str:
         return "faq"
 
     return "manual"
-
