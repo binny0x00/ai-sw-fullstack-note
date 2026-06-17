@@ -1,6 +1,6 @@
 import time
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import Response
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -109,6 +109,23 @@ def search_rag(
 @app.get("/rag/status", response_model=RagStatusResponse)
 def get_rag_status(db: Session = Depends(get_db)) -> dict:
     return RagService(db).get_status()
+
+
+@app.post("/admin/rag/ingest")
+def ingest_rag_documents(
+    x_admin_token: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
+    if not settings.admin_ingest_token:
+        raise HTTPException(
+            status_code=403,
+            detail="ADMIN_INGEST_TOKEN is not configured.",
+        )
+
+    if x_admin_token != settings.admin_ingest_token:
+        raise HTTPException(status_code=403, detail="Invalid admin token.")
+
+    return RagService(db).index_all_markdown_documents()
 
 
 @app.post("/rag/posts", response_model=RagPostIndexResponse)

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     github_project_title: str = "ai-inquiry"
     github_project_status_field: str = "Status"
     github_project_status_option: str | None = None
+    admin_ingest_token: str | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

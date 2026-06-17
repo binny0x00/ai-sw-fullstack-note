@@ -15,9 +15,10 @@ CLIENT_ORIGIN=https://your-vercel-app.vercel.app
 AI_SERVER_BASE_URL=https://your-ai-server.onrender.com
 OPENAI_API_KEY=your-openai-api-key
 GITHUB_TOKEN=your-github-token
+ADMIN_INGEST_TOKEN=your-random-admin-token
 ```
 
-`AI_SERVER_BASE_URL` belongs to the Nest backend service. `OPENAI_API_KEY` and `GITHUB_TOKEN` belong to the FastAPI AI service. `GITHUB_TOKEN` is only required for the GitHub Issue approval flow.
+`AI_SERVER_BASE_URL` belongs to the Nest backend service. `OPENAI_API_KEY`, `GITHUB_TOKEN`, and `ADMIN_INGEST_TOKEN` belong to the FastAPI AI service. `GITHUB_TOKEN` is only required for the GitHub Issue approval flow.
 
 The Nest backend and FastAPI AI server share Render PostgreSQL through `DATABASE_URL`. `DB_HOST`, `DB_PORT`, `DB_USERNAME`, `DB_PASSWORD`, and `DB_DATABASE` are still supported for local Nest development.
 
@@ -49,3 +50,14 @@ For the Render backend, the build command installs devDependencies even when `NO
 6. If the FastAPI URL differs from `https://ai-sw-ai-server.onrender.com`, update Nest `AI_SERVER_BASE_URL`.
 7. Redeploy or restart the Render services after changing environment variables.
 8. Open both Render service URLs once before the demo to avoid free-plan cold start.
+
+## RAG Ingest Without Render Shell
+
+Render free services do not provide Shell access. Set `ADMIN_INGEST_TOKEN` on `ai-sw-ai-server`, redeploy, then run this from your local terminal:
+
+```bash
+curl -X POST https://ai-sw-ai-server.onrender.com/admin/rag/ingest \
+  -H "X-Admin-Token: your-random-admin-token"
+```
+
+The response should show `document_count` and `embedding_count`.

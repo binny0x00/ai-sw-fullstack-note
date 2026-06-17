@@ -62,6 +62,8 @@ services:
         value: Status
       - key: GITHUB_PROJECT_STATUS_OPTION
         value: Todo
+      - key: ADMIN_INGEST_TOKEN
+        sync: false
 
 databases:
   - name: ai-sw-basic-db

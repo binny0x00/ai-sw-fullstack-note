@@ -1,7 +1,7 @@
 from langchain_core.documents import Document
 from sqlalchemy.orm import Session
 
-from app.rag.loader import load_markdown_document
+from app.rag.loader import load_markdown_document, load_markdown_documents
 from app.rag.splitter import split_text
 from app.rag.vector_store import PgVectorStore
 
@@ -33,6 +33,37 @@ class RagService:
 
     def get_status(self) -> dict:
         return self.vector_store.get_status()
+
+    def index_all_markdown_documents(self, docs_dir: str = "docs") -> dict:
+        raw_documents = load_markdown_documents(docs_dir)
+        documents: list[Document] = []
+        ids: list[str] = []
+
+        for raw_document in raw_documents:
+            chunks = split_text(raw_document["content"])
+
+            for index, chunk in enumerate(chunks):
+                ids.append(f"{raw_document['source']}:{index}")
+                documents.append(
+                    Document(
+                        page_content=chunk,
+                        metadata={
+                            "source": raw_document["source"],
+                            "title": raw_document["title"],
+                            "category": raw_document["category"],
+                            "chunk_index": index,
+                        },
+                    )
+                )
+
+        if documents:
+            self.vector_store.replace_documents(documents, ids)
+
+        return {
+            "document_count": len(raw_documents),
+            "embedding_count": len(documents),
+            "indexed": bool(documents),
+        }
 
     def index_markdown_file(self, file_path: str) -> dict:
         raw_document = load_markdown_document(file_path)
