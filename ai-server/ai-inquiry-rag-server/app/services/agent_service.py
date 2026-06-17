@@ -26,7 +26,7 @@ class AgentService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.llm = ChatOpenAI(
-            api_key=settings.openai_api_key,
+            api_key=settings.require_openai_api_key(),
             model=settings.openai_chat_model,
             temperature=0,
             model_kwargs={"response_format": {"type": "json_object"}},

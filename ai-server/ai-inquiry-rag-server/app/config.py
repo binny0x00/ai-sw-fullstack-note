@@ -14,7 +14,7 @@ def normalize_database_url(database_url: str) -> str:
 class Settings(BaseSettings):
     app_name: str = "AI Inquiry RAG Server"
     database_url: str
-    openai_api_key: str
+    openai_api_key: str | None = None
     openai_embedding_model: str = "text-embedding-3-small"
     openai_chat_model: str = "gpt-4.1-mini"
     rag_collection_name: str = "ai_inquiry_documents"
@@ -32,6 +32,12 @@ class Settings(BaseSettings):
 
     def model_post_init(self, __context: object) -> None:
         self.database_url = normalize_database_url(self.database_url)
+
+    def require_openai_api_key(self) -> str:
+        if not self.openai_api_key:
+            raise RuntimeError("OPENAI_API_KEY is required for AI features.")
+
+        return self.openai_api_key
 
 
 settings = Settings()

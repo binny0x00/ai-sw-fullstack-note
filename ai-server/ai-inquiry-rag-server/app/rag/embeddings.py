@@ -6,7 +6,7 @@ from app.config import settings
 class EmbeddingService:
     def __init__(self) -> None:
         self.embeddings = OpenAIEmbeddings(
-            api_key=settings.openai_api_key,
+            api_key=settings.require_openai_api_key(),
             model=settings.openai_embedding_model,
         )
 
