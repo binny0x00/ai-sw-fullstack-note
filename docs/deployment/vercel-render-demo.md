@@ -34,7 +34,7 @@ Build settings are already captured in `client/basic-client/vercel.json`:
 - Build command: `pnpm run build`
 - Output directory: `dist`
 
-For the Render backend, the build command installs devDependencies even when `NODE_ENV=production`, because Nest needs `@nestjs/cli` during `pnpm run build`.
+For the Render backend, the build command installs devDependencies even when `NODE_ENV=production`, because Nest needs `@nestjs/cli` during `pnpm run build`. It intentionally avoids `corepack enable` because Render's system pnpm path can be read-only during builds.
 
 ## Demo Checklist
 
