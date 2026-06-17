@@ -1,6 +1,16 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def normalize_database_url(database_url: str) -> str:
+    if database_url.startswith("postgres://"):
+        database_url = database_url.replace("postgres://", "postgresql://", 1)
+
+    if database_url.startswith("postgresql://"):
+        return database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+    return database_url
+
+
 class Settings(BaseSettings):
     app_name: str = "AI Inquiry RAG Server"
     database_url: str
@@ -19,6 +29,9 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
     )
+
+    def model_post_init(self, __context: object) -> None:
+        self.database_url = normalize_database_url(self.database_url)
 
 
 settings = Settings()
