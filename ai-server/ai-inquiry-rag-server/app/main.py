@@ -41,6 +41,16 @@ from app.services.post_precheck_service import PostPrecheckService
 app = FastAPI(title=settings.app_name)
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "status": "ok",
+        "service": settings.app_name,
+        "docs": "/docs",
+        "health": "/health",
+    }
+
+
 @app.middleware("http")
 async def log_api_request(request: Request, call_next) -> Response:
     started_at = time.perf_counter()
