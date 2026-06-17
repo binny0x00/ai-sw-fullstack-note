@@ -41,6 +41,7 @@ export class PostsService {
 
         const savedPost = await this.postRepository.save(post);
         await this.syncPostEmbedding(savedPost.id);
+        void this.prepareAiReview(savedPost.id);
 
         return {
             success: true,
@@ -135,6 +136,7 @@ export class PostsService {
 
         const savedPost = await this.postRepository.save(post);
         await this.syncPostEmbedding(savedPost.id);
+        void this.prepareAiReview(savedPost.id);
 
         return {
             success: true,
@@ -195,6 +197,19 @@ export class PostsService {
     }
 
     async reviewWithAi(id: number, aiReviewPostDto: AiReviewPostDto) {
+        const latestReview = await this.findLatestAiReview(id);
+
+        if (latestReview) {
+            return {
+                ...latestReview,
+                repository: aiReviewPostDto.repository,
+            };
+        }
+
+        return this.generateAiReview(id, aiReviewPostDto.repository);
+    }
+
+    private async generateAiReview(id: number, repository?: string) {
         const post = await this.postRepository.findOne({
             where: {id},
             relations: {
@@ -222,7 +237,7 @@ export class PostsService {
             comments.length,
             analyzedInquiry,
             analysis,
-            aiReviewPostDto.repository,
+            repository,
         );
     }
 
@@ -464,6 +479,20 @@ export class PostsService {
             await this.inquiriesService.deletePostFromRag(postId);
         } catch {
             // RAG sync is best-effort and must not block board CRUD.
+        }
+    }
+
+    private async prepareAiReview(postId: number) {
+        try {
+            const latestReview = await this.findLatestAiReview(postId);
+
+            if (latestReview) {
+                return;
+            }
+
+            await this.generateAiReview(postId);
+        } catch {
+            // AI review preparation is best-effort and must not block board CRUD.
         }
     }
 }

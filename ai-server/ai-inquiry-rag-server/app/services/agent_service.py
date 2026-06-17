@@ -2,6 +2,7 @@ import json
 import time
 
 from fastapi import HTTPException
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 from openai import OpenAIError
 from sqlalchemy.exc import SQLAlchemyError
@@ -22,6 +23,35 @@ from app.services.mcp_service import McpService
 from app.services.observability_service import ObservabilityService
 
 
+GITHUB_ISSUE_SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "search_github_issues",
+        "description": (
+            "Search related GitHub issues before drafting a customer support answer."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "queries": {
+                    "type": "array",
+                    "description": (
+                        "One to five concise GitHub issue search queries."
+                    ),
+                    "items": {
+                        "type": "string",
+                    },
+                    "minItems": 1,
+                    "maxItems": 5,
+                },
+            },
+            "required": ["queries"],
+            "additionalProperties": False,
+        },
+    },
+}
+
+
 class AgentService:
     def __init__(self, db: Session) -> None:
         self.db = db
@@ -30,6 +60,11 @@ class AgentService:
             model=settings.openai_chat_model,
             temperature=0,
             model_kwargs={"response_format": {"type": "json_object"}},
+        )
+        self.tool_llm = ChatOpenAI(
+            api_key=settings.require_openai_api_key(),
+            model=settings.openai_chat_model,
+            temperature=0,
         )
         self.rag_service = RagService(db)
         self.inquiry_service = InquiryService(db)
@@ -187,13 +222,65 @@ class AgentService:
         if state["tool_loop_complete"]:
             return state
 
+        started_at = time.perf_counter()
+        tool_planner = self.tool_llm.bind_tools([GITHUB_ISSUE_SEARCH_TOOL])
+
+        try:
+            response = tool_planner.invoke(
+                [
+                    SystemMessage(
+                        content=(
+                            "너는 고객 문의 처리 Agent의 도구 선택 단계다. "
+                            "관련 GitHub Issue가 이미 있는지 확인하면 답변과 액션 판단에 "
+                            "도움이 되는 문의라면 search_github_issues 도구를 호출한다. "
+                            "queries는 GitHub Issue 검색에 적합한 핵심 증상/기능 키워드로 "
+                            "최대 5개까지 작성한다. 도구가 필요 없다고 판단하면 호출하지 않는다."
+                        )
+                    ),
+                    HumanMessage(
+                        content=(
+                            "문의 제목:\n"
+                            f"{state['inquiry']['title']}\n\n"
+                            "문의 내용:\n"
+                            f"{state['inquiry']['body']}\n\n"
+                            "RAG 참고 문서:\n"
+                            f"{state['context']}"
+                        )
+                    ),
+                ]
+            )
+        except OpenAIError as exc:
+            raise HTTPException(
+                status_code=502,
+                detail=f"OpenAI tool planning request failed: {exc}",
+            ) from exc
+
+        planned_tool_calls = _parse_llm_tool_calls(response)
+        duration_ms = _duration_ms(started_at)
+        self._log_agent_step(
+            inquiry_id=state["inquiry"]["id"],
+            step_name="plan_tools",
+            status="ok",
+            duration_ms=duration_ms,
+            input_payload={
+                "available_tools": [GITHUB_ISSUE_SEARCH_TOOL["function"]["name"]],
+            },
+            output_payload={
+                "tool_call_count": len(planned_tool_calls),
+                "tool_calls": planned_tool_calls,
+            },
+        )
+
+        if not planned_tool_calls:
+            return {
+                **state,
+                "tool_loop_count": state["tool_loop_count"] + 1,
+                "tool_loop_complete": True,
+            }
+
         tool_calls = [
             *state["tool_calls"],
-            {
-                "name": "github_issue_search",
-                "status": "planned",
-                "reason": "Check related GitHub Issues before drafting an answer.",
-            },
+            *planned_tool_calls,
         ]
 
         return {
@@ -207,7 +294,11 @@ class AgentService:
         tool_calls = [*state["tool_calls"]]
         latest_tool_call = tool_calls[-1]
         github_token_ready = bool(settings.github_token and settings.github_token.strip())
-        search_queries = _build_github_issue_search_queries(state["inquiry"])
+        search_queries = _get_tool_call_queries(latest_tool_call)
+
+        if not search_queries:
+            search_queries = _build_github_issue_search_queries(state["inquiry"])
+
         mcp_log = self.mcp_service.search_github_issues_log(
             inquiry=state["inquiry"],
             repository=settings.github_repository,
@@ -390,6 +481,95 @@ def _parse_doc_recommendations(content: str | dict) -> list[dict[str, str]]:
             )
 
     return parsed_recommendations[:3]
+
+
+def _parse_llm_tool_calls(response) -> list[dict]:
+    tool_calls = getattr(response, "tool_calls", None) or []
+
+    if not tool_calls:
+        raw_tool_calls = getattr(response, "additional_kwargs", {}).get(
+            "tool_calls",
+            [],
+        )
+        tool_calls = [
+            _parse_raw_tool_call(raw_tool_call)
+            for raw_tool_call in raw_tool_calls
+        ]
+
+    parsed_tool_calls: list[dict] = []
+
+    for index, tool_call in enumerate(tool_calls):
+        name = str(tool_call.get("name") or "").strip()
+        args = tool_call.get("args") or {}
+
+        if name != GITHUB_ISSUE_SEARCH_TOOL["function"]["name"]:
+            continue
+
+        queries = _normalize_tool_call_queries(args.get("queries"))
+
+        if not queries:
+            continue
+
+        parsed_tool_calls.append(
+            {
+                "id": tool_call.get("id") or f"tool_call_{index}",
+                "name": "github_issue_search",
+                "status": "planned",
+                "reason": (
+                    "OpenAI tool calling selected GitHub Issue search "
+                    "before drafting an answer."
+                ),
+                "arguments": {
+                    "queries": queries,
+                },
+            }
+        )
+
+    return parsed_tool_calls[:1]
+
+
+def _parse_raw_tool_call(raw_tool_call: dict) -> dict:
+    function_payload = raw_tool_call.get("function", {})
+    raw_arguments = function_payload.get("arguments") or "{}"
+
+    try:
+        args = json.loads(raw_arguments)
+    except json.JSONDecodeError:
+        args = {}
+
+    return {
+        "id": raw_tool_call.get("id"),
+        "name": function_payload.get("name"),
+        "args": args,
+    }
+
+
+def _get_tool_call_queries(tool_call: dict) -> list[str]:
+    arguments = tool_call.get("arguments") or {}
+
+    if not isinstance(arguments, dict):
+        return []
+
+    return _normalize_tool_call_queries(arguments.get("queries"))
+
+
+def _normalize_tool_call_queries(raw_queries) -> list[str]:
+    if isinstance(raw_queries, str):
+        values = [raw_queries]
+    elif isinstance(raw_queries, list):
+        values = raw_queries
+    else:
+        values = []
+
+    queries: list[str] = []
+
+    for raw_query in values:
+        query = " ".join(str(raw_query).split())
+
+        if query and query not in queries:
+            queries.append(query)
+
+    return queries[:5]
 
 
 def _is_markdown_file_name(file_name: str) -> bool:
