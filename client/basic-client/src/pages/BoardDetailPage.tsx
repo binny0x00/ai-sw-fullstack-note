@@ -44,6 +44,7 @@ function BoardDetailPage() {
     const [githubIssueLog, setGithubIssueLog] = useState<McpExecutionLog | null>(null);
     const [ragStatus, setRagStatus] = useState<RagStatus | null>(null);
     const [isReviewing, setIsReviewing] = useState(false);
+    const [isLoadingLatestAiReview, setIsLoadingLatestAiReview] = useState(false);
     const [isApprovingIssue, setIsApprovingIssue] = useState(false);
     const [appendingIssueNumber, setAppendingIssueNumber] = useState<number | null>(null);
     const [hasFilledAiAnswer, setHasFilledAiAnswer] = useState(false);
@@ -91,25 +92,53 @@ function BoardDetailPage() {
     }, [id]);
 
     useEffect(() => {
+        let canceled = false;
+        let timeoutId: number | undefined;
+        let attemptCount = 0;
+        const maxAttempts = 15;
+
         async function fetchLatestAiReview() {
             if (!id || !isManager) return;
+            attemptCount += 1;
+            setIsLoadingLatestAiReview(true);
 
             try {
                 const latestReview = await getLatestPostAiReview(Number(id));
 
-                if (!latestReview) return;
+                if (!latestReview) {
+                    if (!canceled && attemptCount < maxAttempts) {
+                        timeoutId = window.setTimeout(fetchLatestAiReview, 2000);
+                    } else if (!canceled) {
+                        setIsLoadingLatestAiReview(false);
+                    }
+                    return;
+                }
 
+                if (canceled) return;
+
+                setIsLoadingLatestAiReview(false);
                 setAiReview(latestReview);
                 setGithubIssueLog(latestReview.githubIssueLog);
                 setHasFilledAiAnswer(false);
                 setAppliedDocRecommendations(new Set());
                 isApprovingIssueRef.current = false;
             } catch {
-                setAiReview(null);
+                if (!canceled) {
+                    setIsLoadingLatestAiReview(false);
+                    setAiReview(null);
+                }
             }
         }
 
         fetchLatestAiReview();
+
+        return () => {
+            canceled = true;
+
+            if (timeoutId !== undefined) {
+                window.clearTimeout(timeoutId);
+            }
+        };
     }, [id, isManager]);
 
     useEffect(() => {
@@ -333,8 +362,16 @@ function BoardDetailPage() {
                             </p>
                         )}
                     </div>
-                    <button type="button" onClick={handleAiReview} disabled={isReviewing}>
-                        {isReviewing ? '검토 중' : 'AI 검토 실행'}
+                    <button
+                        type="button"
+                        onClick={handleAiReview}
+                        disabled={isReviewing || (isLoadingLatestAiReview && !aiReview)}
+                    >
+                        {isReviewing
+                            ? '검토 중'
+                            : isLoadingLatestAiReview && !aiReview
+                                ? '자동 검토 준비 중'
+                                : 'AI 검토 실행'}
                     </button>
                 </div>
 
